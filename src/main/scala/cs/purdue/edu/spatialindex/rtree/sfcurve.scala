@@ -21,13 +21,16 @@ import com.google.uzaygezen.core.ranges.LongRangeHome
 /**
  * Created by merlin on 1/21/16.
  */
+
 /**
  * this class is used to map data to space filling curve data
  */
 
 trait SpaceFillingCurve2D {
   def toIndex(x: Double, y: Double): Long
+
   def toPoint(i: Long): (Double, Double)
+
   def toRanges(xmin: Double, ymin: Double, xmax: Double, ymax: Double): Seq[(Long, Long)]
 }
 
@@ -44,14 +47,14 @@ class HilbertCurve2D(resolution: Int) extends SpaceFillingCurve2D {
   //    (y * (precision - 1) / 180d).toLong
 
   final def setNormalizedLatitude(latNormal: Long) = {
-    if(!(latNormal >= 0 && latNormal <= precision))
+    if (!(latNormal >= 0 && latNormal <= precision))
       throw new NumberFormatException("Normalized latitude must be greater than 0 and less than the maximum precision")
 
     latNormal * 180d / (precision - 1)
   }
 
   final def setNormalizedLongitude(lonNormal: Long) = {
-    if(!(lonNormal >= 0 && lonNormal <= precision))
+    if (!(lonNormal >= 0 && lonNormal <= precision))
       throw new NumberFormatException("Normalized longitude must be greater than 0 and less than the maximum precision")
 
     lonNormal * 360d / (precision - 1)
@@ -72,12 +75,12 @@ class HilbertCurve2D(resolution: Int) extends SpaceFillingCurve2D {
 
     val hilbert = BitVectorFactories.OPTIMAL.apply(resolution * 2)
 
-    chc.index(p,0,hilbert)
+    chc.index(p, 0, hilbert)
     hilbert.toLong
   }
 
   def toPoint(i: Long): (Double, Double) = {
-    val h = BitVectorFactories.OPTIMAL.apply(resolution*2)
+    val h = BitVectorFactories.OPTIMAL.apply(resolution * 2)
     h.copyFrom(i)
     val p =
       Array[BitVector](
@@ -85,7 +88,7 @@ class HilbertCurve2D(resolution: Int) extends SpaceFillingCurve2D {
         BitVectorFactories.OPTIMAL(resolution)
       )
 
-    chc.indexInverse(h,p)
+    chc.indexInverse(h, p)
 
     val x = setNormalizedLongitude(p(0).toLong) - 180
     val y = setNormalizedLatitude(p(1).toLong) - 90
@@ -96,17 +99,17 @@ class HilbertCurve2D(resolution: Int) extends SpaceFillingCurve2D {
     val min = (xmin, ymin)
     val max = (xmax, ymax)
 
-    var chc = new CompactHilbertCurve( Array[Int](resolution,resolution) )
+    var chc = new CompactHilbertCurve(Array[Int](resolution, resolution))
     var region = new java.util.ArrayList[LongRange]()
 
     val minNormalizedLongitude = getNormalizedLongitude(xmin)
-    val minNormalizedLatitude  = getNormalizedLatitude(ymin)
+    val minNormalizedLatitude = getNormalizedLatitude(ymin)
 
     val maxNormalizedLongitude = getNormalizedLongitude(xmax)
-    val maxNormalizedLatitude  = getNormalizedLatitude(ymax)
+    val maxNormalizedLatitude = getNormalizedLatitude(ymax)
 
-    region.add(LongRange.of(minNormalizedLongitude,maxNormalizedLongitude))
-    region.add(LongRange.of(minNormalizedLatitude,maxNormalizedLatitude))
+    region.add(LongRange.of(minNormalizedLongitude, maxNormalizedLongitude))
+    region.add(LongRange.of(minNormalizedLatitude, maxNormalizedLatitude))
 
     var zero = new LongContent(0L)
     var LongRangeIDFunction: Function[LongRange, LongRange] = Functions.identity()
@@ -133,15 +136,15 @@ class HilbertCurve2D(resolution: Int) extends SpaceFillingCurve2D {
     var ranges: java.util.List[FilteredIndexRange[LongRange, LongRange]] = query.getFilteredIndexRanges()
 
     //result
-    var result = List[(Long,Long)]()
+    var result = List[(Long, Long)]()
     val itr = ranges.iterator
 
-    while(itr.hasNext()) {
+    while (itr.hasNext()) {
       var l = itr.next()
       result = (
         l.getIndexRange().getStart().asInstanceOf[Long],
         l.getIndexRange().getEnd().asInstanceOf[Long]
-        ) :: result
+      ) :: result
     }
     result
   }

@@ -7,7 +7,7 @@ The query scheduler is responsible for mitigating skew in spatial queries, while
 based on the indexes and the nature of the spatial queries.Furthermore, to avoid unnecessary network communication overhead when processing overlapped spatial data, an efficient spatial bloom filter is embedded into the indexes of LocationSpark. Finally, LocationSpark tracks frequently accessed spatial data, and dynamically flushes less frequently accessed data into disk.
 
 ## Spatial operators 
-###Update RDD, Range Query, KNN Query, Spatial Textual Query, Spatial Join, kNN Join
+### Update RDD, Range Query, KNN Query, Spatial Textual Query, Spatial Join, kNN Join
 ```scala
 import cs.purdue.edu.spatialrdd.SpatialRDD
 import cs.purdue.edu.spatialindex.rtree._
@@ -72,9 +72,4 @@ import cs.purdue.edu.spatialindex.rtree._
     val boxes=Array((Box(-21,30,-35,35)),(Box(-28.111,81.333,-31.33,86.333)))
     val queryBoxes=spark.parallelize(boxes,numofpartition)
     val joinresultRdd=indexed.sjoin(transfromQueryRDD)((k,id)=>id)
-    
- 
-    
-    
-    
-....
+```

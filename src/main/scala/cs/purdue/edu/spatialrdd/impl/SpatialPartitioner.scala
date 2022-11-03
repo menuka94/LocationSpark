@@ -13,12 +13,15 @@ import scala.reflect.ClassTag
 /**
  * static data partition approach
  */
-class Grid2DPartitioner(rangex: Int,rangey: Int, numParts:Int) extends Partitioner{
+class Grid2DPartitioner(rangex: Int, rangey: Int, numParts: Int) extends Partitioner {
 
   def numPartitions: Int = numParts
+
   def ceilSqrtNumParts = math.ceil(math.sqrt(numParts)).toInt
-  def num_row_part=rangex/ceilSqrtNumParts
-  def num_col_part=rangey/ceilSqrtNumParts
+
+  def num_row_part = rangex / ceilSqrtNumParts
+
+  def num_col_part = rangey / ceilSqrtNumParts
 
   def nonNegativeMod(x: Int, mod: Int): Int = {
     val rawMod = x % mod
@@ -29,12 +32,12 @@ class Grid2DPartitioner(rangex: Int,rangey: Int, numParts:Int) extends Partition
 
     case None => 0
 
-    case point:Point =>
+    case point: Point =>
       //val point=key.asInstanceOf[Point] //get an new entry
-        require(math.abs(point.x)<=rangex/2&&math.abs(point.y)<=rangey/2)
-        val rowid=((point.x+rangex/2)/(num_col_part)).toInt
-        val columnid=((point.y+rangey/2)/(num_row_part)).toInt
-        ((rowid*ceilSqrtNumParts+columnid)%numParts)
+      require(math.abs(point.x) <= rangex / 2 && math.abs(point.y) <= rangey / 2)
+      val rowid = ((point.x + rangex / 2) / (num_col_part)).toInt
+      val columnid = ((point.y + rangey / 2) / (num_row_part)).toInt
+      ((rowid * ceilSqrtNumParts + columnid) % numParts)
 
   }
 
@@ -43,64 +46,59 @@ class Grid2DPartitioner(rangex: Int,rangey: Int, numParts:Int) extends Partition
 }
 
 /**
- *quadtree based data partition approach
+ * quadtree based data partition approach
  */
-class QtreePartitioner[K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
-                               @transient rdd: RDD[_ <: Product2[K, V]]) extends Partitioner{
+class QtreePartitioner[K: ClassTag, V: ClassTag](partitions: Int, fraction: Float,
+                                                 @transient rdd: RDD[_ <: Product2[K, V]]) extends Partitioner {
 
   // We allow partitions = 0, which happens when sorting an empty RDD under the default settings.
   require(partitions >= 0, s"Number of partitions cannot be negative but found $partitions.")
 
-  var realnumPartitions=0
+  var realnumPartitions = 0
 
   def numPartitions: Int = {
 
-    if(realnumPartitions!=0&&realnumPartitions<=partitions)
-    {
+    if (realnumPartitions != 0 && realnumPartitions <= partitions) {
       realnumPartitions
-    }else
-    {
+    } else {
       partitions
     }
 
   }
 
-  val quadtree:QtreeForPartion={
+  val quadtree: QtreeForPartion = {
 
-    val total=rdd.count()
+    val total = rdd.count()
 
-    var fraction2=fraction
+    var fraction2 = fraction
 
-    if(total*fraction>5e5)
-    {
-      fraction2=(5e5/total).toFloat
+    if (total * fraction > 5e5) {
+      fraction2 = (5e5 / total).toFloat
     }
 
-    var sampledata=rdd.map(_._1).sample(false,fraction2).collect()
+    var sampledata = rdd.map(_._1).sample(false, fraction2).collect()
 
     //in case the sample data size is too small,expand the sample ratio 50 times.
-    if(sampledata.length<10000)
-    {
-      sampledata=rdd.map(_._1).sample(false,0.2).collect()
+    if (sampledata.length < 10000) {
+      sampledata = rdd.map(_._1).sample(false, 0.2).collect()
     }
 
-    var leafbound=sampledata.length/partitions
+    var leafbound = sampledata.length / partitions
 
-    if(leafbound==0)
-    {
-      leafbound=qtreeUtil.leafbound
+    if (leafbound == 0) {
+      leafbound = qtreeUtil.leafbound
     }
 
-    val qtree=new QtreeForPartion(leafbound)
+    val qtree = new QtreeForPartion(leafbound)
 
-    sampledata.foreach{
-      case p:Point=>
+    sampledata.foreach {
+      case p: Point =>
         qtree.insertPoint(p)
 
-      case _=>println("do not support this data type")
+      case _ => println("do not support this data type")
     }
 
-    realnumPartitions=qtree.computePIDofLeaf(sampledata.length,partitions)
+    realnumPartitions = qtree.computePIDofLeaf(sampledata.length, partitions)
     //println("bound "+leafbound)
     //qtree.printTreeStructure()
 
@@ -109,17 +107,17 @@ class QtreePartitioner[K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
 
 
   def getPartition(key: Any): Int = key match {
-    case p:Point =>
+    case p: Point =>
       this.quadtree.getPID(p)
   }
 
   /**
    * get the overlap region for the input box
+   *
    * @param box
    * @return
    */
-  def getPartitionForBox(box:Any):HashSet[Int]=
-  {
+  def getPartitionForBox(box: Any): HashSet[Int] = {
     box match {
       case box: Box =>
         this.quadtree.getPIDforBox(box)
@@ -130,7 +128,7 @@ class QtreePartitioner[K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
     }
   }
 
-  def getPointsForSJoin(box:Any):HashSet[Point]={
+  def getPointsForSJoin(box: Any): HashSet[Point] = {
 
     box match {
       case box: Box =>
@@ -147,7 +145,7 @@ class QtreePartitioner[K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
 }
 
 
-class QtreePartitionerBasedQueries[K: ClassTag,V:ClassTag](partitions:Int,quadtree:QtreeForPartion) extends Partitioner{
+class QtreePartitionerBasedQueries[K: ClassTag, V: ClassTag](partitions: Int, quadtree: QtreeForPartion) extends Partitioner {
 
   // We allow partitions = 0, which happens when sorting an empty RDD under the default settings.
   require(partitions >= 0, s"Number of partitions cannot be negative but found $partitions.")
@@ -155,17 +153,17 @@ class QtreePartitionerBasedQueries[K: ClassTag,V:ClassTag](partitions:Int,quadtr
   def numPartitions: Int = partitions
 
   def getPartition(key: Any): Int = key match {
-    case p:Point =>
+    case p: Point =>
       this.quadtree.getPID(p)
   }
 
   /**
    * get the overlap region for the input box
+   *
    * @param box
    * @return
    */
-  def getPartitionForBox(box:Any):HashSet[Int]=
-  {
+  def getPartitionForBox(box: Any): HashSet[Int] = {
     box match {
       case box: Box =>
         this.quadtree.getPIDforBox(box)
@@ -176,7 +174,7 @@ class QtreePartitionerBasedQueries[K: ClassTag,V:ClassTag](partitions:Int,quadtr
     }
   }
 
-  def getPointsForSJoin(box:Any):HashSet[Point]={
+  def getPointsForSJoin(box: Any): HashSet[Point] = {
 
     box match {
       case box: Box =>
@@ -194,24 +192,25 @@ class QtreePartitionerBasedQueries[K: ClassTag,V:ClassTag](partitions:Int,quadtr
 
 /**
  * the Rtree partitioner for the input data
+ *
  * @param partitions
  * @param fraction
  * @param rdd
  * @tparam K
  * @tparam V
  */
-class RTreePartitioner [K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
-                                                rdd: RDD[_ <: Product2[K, V]]) extends Partitioner{
+class RTreePartitioner[K: ClassTag, V: ClassTag](partitions: Int, fraction: Float,
+                                                 rdd: RDD[_ <: Product2[K, V]]) extends Partitioner {
 
   require(partitions >= 0, s"Number of partitions cannot be negative but found $partitions.")
 
-  val rtreeForPartition={
+  val rtreeForPartition = {
     //sample data from big data set
-    val sampledata=rdd.map(_._1).sample(false,fraction).collect()
+    val sampledata = rdd.map(_._1).sample(false, fraction).collect()
 
     val numDimensions: Int = 2
     val minNum: Int = 200
-    val maxNum: Int = sampledata.length/partitions
+    val maxNum: Int = sampledata.length / partitions
 
     //insert sampledata into the rtree
 
@@ -223,15 +222,15 @@ class RTreePartitioner [K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
 
   /**
    * get the related partition for each input data point
+   *
    * @param key
    * @return
    */
-  def getPartition(key: Any): Int ={
-    key match
-    {
-      case k:Array[Float]=>
-         0
-      case _=>
+  def getPartition(key: Any): Int = {
+    key match {
+      case k: Array[Float] =>
+        0
+      case _ =>
         1
       //Array(k)
     }
@@ -242,34 +241,35 @@ class RTreePartitioner [K: ClassTag,V:ClassTag](partitions:Int, fraction:Float,
 
 
 /**
- *quadtree based data partition approach
+ * quadtree based data partition approach
  */
-class Grid2DPartitionerForBox(rangex: Int,rangey: Int, numParts:Int) extends Partitioner{
+class Grid2DPartitionerForBox(rangex: Int, rangey: Int, numParts: Int) extends Partitioner {
 
   def numPartitions: Int = numParts
 
   def ceilSqrtNumParts = math.ceil(math.sqrt(numParts)).toInt
-  def num_row_part=rangex/ceilSqrtNumParts
-  def num_col_part=rangey/ceilSqrtNumParts
+
+  def num_row_part = rangex / ceilSqrtNumParts
+
+  def num_col_part = rangey / ceilSqrtNumParts
 
   def getPartitionIDForIndex(key: Any): Int = {
     key match {
-      case (i: Int, j : Int) => (i * ceilSqrtNumParts + j) % numPartitions
+      case (i: Int, j: Int) => (i * ceilSqrtNumParts + j) % numPartitions
       case _ => throw new IllegalArgumentException(s"Unrecognized key: $key")
     }
   }
 
 
-  def getPartition(key:Any):Int={
-    key match
-    {
-      case point:Point=>
+  def getPartition(key: Any): Int = {
+    key match {
+      case point: Point =>
 
-        require(math.abs(point.x)<=rangex/2&&math.abs(point.y)<=rangey/2)
+        require(math.abs(point.x) <= rangex / 2 && math.abs(point.y) <= rangey / 2)
         //if(math.abs(point.x)<=rangex/2&&math.abs(point.y)<=rangey/2)
-          val rowid=((point.x+rangex/2)/(num_col_part)).toInt
-          val columnid=((point.y+rangey/2)/(num_row_part)).toInt
-          getPartitionIDForIndex(rowid,columnid)
+        val rowid = ((point.x + rangex / 2) / (num_col_part)).toInt
+        val columnid = ((point.y + rangey / 2) / (num_row_part)).toInt
+        getPartitionIDForIndex(rowid, columnid)
     }
 
   }
@@ -279,23 +279,23 @@ class Grid2DPartitionerForBox(rangex: Int,rangey: Int, numParts:Int) extends Par
 
     case None => null
 
-    case box:Box =>
+    case box: Box =>
       //val box=key.asInstanceOf[Box] //get an new entry
-      require(math.abs(box.x)<=rangex&&math.abs(box.y)<=rangey)
-      require(math.abs(box.x2)<=rangex&&math.abs(box.y2)<=rangey)
+      require(math.abs(box.x) <= rangex && math.abs(box.y) <= rangey)
+      require(math.abs(box.x2) <= rangex && math.abs(box.y2) <= rangey)
 
-      val x1=((box.x+rangex/2)/(num_col_part)).toInt
-      val y1=((box.y+rangey/2)/(num_row_part)).toInt
+      val x1 = ((box.x + rangex / 2) / (num_col_part)).toInt
+      val y1 = ((box.y + rangey / 2) / (num_row_part)).toInt
 
-      val x2=((box.x2+rangex/2)/(num_col_part)).toInt
-      val y2=((box.y2+rangey/2)/(num_row_part)).toInt
+      val x2 = ((box.x2 + rangex / 2) / (num_col_part)).toInt
+      val y2 = ((box.y2 + rangey / 2) / (num_row_part)).toInt
 
-      var pids=new HashSet[Int]
+      var pids = new HashSet[Int]
 
-      for(i<-x1 to x2) {
+      for (i <- x1 to x2) {
         for (j <- y1 to y2) {
-            val id=getPartitionIDForIndex(i,j)
-            pids+=id
+          val id = getPartitionIDForIndex(i, j)
+          pids += id
         }
       }
       pids
@@ -306,23 +306,23 @@ class Grid2DPartitionerForBox(rangex: Int,rangey: Int, numParts:Int) extends Par
 
     case None => null
 
-    case box:Box =>
+    case box: Box =>
       //val box=key.asInstanceOf[Box] //get an new entry
-      require(math.abs(box.x)<=rangex&&math.abs(box.y)<=rangey)
-      require(math.abs(box.x2)<=rangex&&math.abs(box.y2)<=rangey)
+      require(math.abs(box.x) <= rangex && math.abs(box.y) <= rangey)
+      require(math.abs(box.x2) <= rangex && math.abs(box.y2) <= rangey)
 
-      val x1=((box.x+rangex/2)/(num_col_part)).toInt
-      val y1=((box.y+rangey/2)/(num_row_part)).toInt
+      val x1 = ((box.x + rangex / 2) / (num_col_part)).toInt
+      val y1 = ((box.y + rangey / 2) / (num_row_part)).toInt
 
-      val x2=((box.x2+rangex/2)/(num_col_part)).toInt
-      val y2=((box.y2+rangey/2)/(num_row_part)).toInt
+      val x2 = ((box.x2 + rangex / 2) / (num_col_part)).toInt
+      val y2 = ((box.y2 + rangey / 2) / (num_row_part)).toInt
 
-      var pids=new HashSet[Point]
+      var pids = new HashSet[Point]
 
-      for(i<-x1 to x2) {
+      for (i <- x1 to x2) {
         for (j <- y1 to y2) {
           //val id=getPartitionIDForIndex(i,j)
-          pids+=Point(i*num_row_part-rangex/2, j*num_col_part-rangey/2)
+          pids += Point(i * num_row_part - rangex / 2, j * num_col_part - rangey / 2)
         }
       }
       pids
@@ -331,7 +331,6 @@ class Grid2DPartitionerForBox(rangex: Int,rangey: Int, numParts:Int) extends Par
   override def hashCode: Int = numPartitions
 
 }
-
 
 
 /*private[spark] object QuadtreePartitioner {

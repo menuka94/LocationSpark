@@ -16,7 +16,8 @@ object KnnJoinApp {
   //this class is mainly used for testing the spatial knn join
 
 
-  val usage = """
+  val usage =
+    """
     Implementation of Spatial knn Join on Spark
     Usage: spatialjoin --left left_data
                        --right right_data
@@ -27,7 +28,7 @@ object KnnJoinApp {
 
   def main(args: Array[String]) {
 
-    if(args.length==0) println(usage)
+    if (args.length == 0) println(usage)
 
     val arglist = args.toList
     type OptionMap = Map[Symbol, Any]
@@ -56,12 +57,12 @@ object KnnJoinApp {
     val leftFile = options.getOrElse('left, Nil).asInstanceOf[String]
     val rightFile = options.getOrElse('right, Nil).asInstanceOf[String]
     Util.localIndex = options.getOrElse('index, Nil).asInstanceOf[String]
-    val knn=options.getOrElse('k, Nil).toString.toInt
+    val knn = options.getOrElse('k, Nil).toString.toInt
 
     val conf = new SparkConf().setAppName("App for Spatial Knn JOIN")
     val spark = new SparkContext(conf)
 
-    /************************************************************************************/
+    /** ********************************************************************************* */
     val leftpoints = spark.textFile(leftFile).map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
       case x =>
@@ -70,9 +71,10 @@ object KnnJoinApp {
         (Point(p1.x.toFloat, p1.y.toFloat), "1")
     }
     val leftLocationRDD = SpatialRDD(leftpoints).cache()
-    /************************************************************************************/
 
-    /************************************************************************************/
+    /** ********************************************************************************* */
+
+    /** ********************************************************************************* */
     val rightpoints = spark.textFile(rightFile).map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
       case x =>
@@ -80,23 +82,26 @@ object KnnJoinApp {
         val p1 = corrds(0)
         (Point(p1.x.toFloat, p1.y.toFloat))
     }
-    /************************************************************************************/
+    /** ********************************************************************************* */
 
     var b1 = System.currentTimeMillis
 
-    val knnjoin=new knnJoinRDD[Point,String](leftLocationRDD,rightpoints,knn,(id)=>true,(id)=>true)
+    val knnjoin = new knnJoinRDD[Point, String](leftLocationRDD, rightpoints, knn, (id) => true, (id) => true)
 
-    val knnjoinresult=knnjoin.rangebasedKnnjoin()
+    val knnjoinresult = knnjoin.rangebasedKnnjoin()
 
-    val tuples=knnjoinresult.map{case(b,v)=>(1,v.size)}.reduceByKey{case(a,b)=>{a+b}}.map{case(a,b)=>b}.collect()
+    val tuples = knnjoinresult.map { case (b, v) => (1, v.size) }.reduceByKey { case (a, b) => {
+      a + b
+    }
+    }.map { case (a, b) => b }.collect()
 
     println("the outer table size: " + rightpoints.count())
     println("the inner table size: " + leftpoints.count())
 
-    println("global index: "+ Util.localIndex+" ; local index: "+ Util.localIndex)
-    println("the k value for kNN join: "+knn)
-    println("knn join results size: "+tuples(0))
-    println("spatial kNN join time: "+(System.currentTimeMillis - b1) +" (ms)")
+    println("global index: " + Util.localIndex + " ; local index: " + Util.localIndex)
+    println("the k value for kNN join: " + knn)
+    println("knn join results size: " + tuples(0))
+    println("spatial kNN join time: " + (System.currentTimeMillis - b1) + " (ms)")
 
     spark.stop()
 

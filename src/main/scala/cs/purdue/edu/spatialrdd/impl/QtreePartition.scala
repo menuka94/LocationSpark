@@ -13,32 +13,31 @@ import scala.reflect.ClassTag
 /**
  * Created by merlin on 11/27/15.
  */
-class QtreePartition [K, V]
+class QtreePartition[K, V]
 (protected val tree: QTree[V])
 (
   override implicit val kTag: ClassTag[K],
   override implicit val vTag: ClassTag[V]
-  )
-  extends SpatialRDDPartition[K,V] with Logging{
+)
+  extends SpatialRDDPartition[K, V] with Logging {
 
 
   override def size: Long = tree.size.asInstanceOf[Long]
 
   override def apply(k: K): Option[V] = {
-    tree.searchPoint(Util.toPoint(k)) match
-    {
-      case null=>None
-      case x:Entry[V]=>Some(x.value)
+    tree.searchPoint(Util.toPoint(k)) match {
+      case null => None
+      case x: Entry[V] => Some(x.value)
     }
 
   }
 
   def isDefined(k: K): Boolean = tree.searchPoint(Util.toPoint(k)) != null
 
-  override def iterator: Iterator[(K, V)] ={
+  override def iterator: Iterator[(K, V)] = {
 
     this.tree.entries.map(
-      kvs=>(kvs.geom.asInstanceOf[K],kvs.value))
+      kvs => (kvs.geom.asInstanceOf[K], kvs.value))
   }
 
   /**
@@ -53,14 +52,12 @@ class QtreePartition [K, V]
   /**
    * Gets the values corresponding to the specified keys, if any. those keys can be the two dimensional object
    */
-  override def multiget(ks: Iterator[K]): Iterator[(K, V)]=
-  {
-    ks.flatMap { k => this(k).map(v => (k, v)) }
+  override def multiget(ks: Iterator[K]): Iterator[(K, V)] = {
+    ks.flatMap { k => this (k).map(v => (k, v)) }
   }
 
 
-  override def delete(ks: Iterator[Entry[V]]): SpatialRDDPartition[K, V]=
-  {
+  override def delete(ks: Iterator[Entry[V]]): SpatialRDDPartition[K, V] = {
     var newMap = this.tree
 
     newMap.removeAll(ks.toIterable)
@@ -76,21 +73,19 @@ class QtreePartition [K, V]
    */
   override def multiput[U](kvs: Iterator[(K, U)],
                            z: (K, U) => V,
-                           f: (K, V, U) => V): SpatialRDDPartition[K, V] =
-  {
+                           f: (K, V, U) => V): SpatialRDDPartition[K, V] = {
     var newMap = this.tree
 
-    for (ku <- kvs)
-    {
-      val oldpoint=Util.toPoint(ku._1)
+    for (ku <- kvs) {
+      val oldpoint = Util.toPoint(ku._1)
 
       val oldV = newMap.searchPoint(oldpoint)
 
       val newV = if (oldV == null) z(ku._1, ku._2) else f(ku._1, oldV.value, ku._2)
 
-      val newEntry=Util.toEntry(ku._1, newV)
+      val newEntry = Util.toEntry(ku._1, newV)
 
-       newMap.insert(oldpoint, newV)
+      newMap.insert(oldpoint, newV)
     }
 
     this.withMap(newMap)
@@ -99,37 +94,35 @@ class QtreePartition [K, V]
 
   /**
    * this is used for range search
+   *
    * @param box
    * @param z
    * @tparam U
    * @return
    */
-  def filter[U](box:U, z:Entry[V]=>Boolean):Iterator[(K, V)]=
-  {
+  def filter[U](box: U, z: Entry[V] => Boolean): Iterator[(K, V)] = {
     val newMap = this.tree
 
-    val ret=newMap.search(box.asInstanceOf[Box],z)
-    ret.map(element=>(element.geom.asInstanceOf[K], element.value)).toIterator
+    val ret = newMap.search(box.asInstanceOf[Box], z)
+    ret.map(element => (element.geom.asInstanceOf[K], element.value)).toIterator
 
   }
 
   /**
    * this is used for knn search over local data
+   *
    * @param entry
    * @param k
    * @param z
    * @tparam U
    * @return
    */
-  def knnfilter[U](entry:U, k:Int, z:Entry[V]=>Boolean):Iterator[(K,V, Double)]=
-  {
-    entry match
-    {
-      case e:Point => this.tree.nearestKwithDistance(e,k,z).map
-        {
-          case(dist,element)=>
-            (element.geom.asInstanceOf[K],element.value,dist)
-        }.toIterator
+  def knnfilter[U](entry: U, k: Int, z: Entry[V] => Boolean): Iterator[(K, V, Double)] = {
+    entry match {
+      case e: Point => this.tree.nearestKwithDistance(e, k, z).map {
+        case (dist, element) =>
+          (element.geom.asInstanceOf[K], element.value, dist)
+      }.toIterator
     }
   }
 
@@ -138,7 +131,7 @@ class QtreePartition [K, V]
   (f: (K, V) => V): SpatialRDDPartition[K, V] = sjoin(other.iterator)(f)
 
   /**
-   *the U need to be box
+   * the U need to be box
    */
   override def sjoin[U: ClassTag]
   (other: Iterator[(K, U)])
@@ -148,14 +141,14 @@ class QtreePartition [K, V]
     /**
      * below is used for hashmap based join
      */
-    var retmap=new HashMap[K,V]
+    var retmap = new HashMap[K, V]
 
-    other.foreach{
-      case(point,b:Box)=>
+    other.foreach {
+      case (point, b: Box) =>
         val ret = newMap.search(b, _ => true)
         ret.foreach {
           case (e: Entry[V]) =>
-            if(!retmap.contains(e.geom.asInstanceOf[K]))
+            if (!retmap.contains(e.geom.asInstanceOf[K]))
               retmap = retmap + (e.geom.asInstanceOf[K] -> e.value)
         }
     }
@@ -166,33 +159,33 @@ class QtreePartition [K, V]
   /**
    * this is used for spatial join return format as u,iterator[(k,v)]
    */
-  override def rjoin[U: ClassTag, U2:ClassTag]
+  override def rjoin[U: ClassTag, U2: ClassTag]
   (other: SpatialRDDPartition[K, U])
-  (f: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2):  Iterator[(U, U2)] = rjoin(other.iterator)(f,f2)
+  (f: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2): Iterator[(U, U2)] = rjoin(other.iterator)(f, f2)
 
-  def rjoin[U: ClassTag, U2:ClassTag]
+  def rjoin[U: ClassTag, U2: ClassTag]
   (other: Iterator[(K, U)])
-  (f: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2): Iterator[(U, U2)]= {
+  (f: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2): Iterator[(U, U2)] = {
 
-    val buf = mutable.HashMap.empty[U,U2]
+    val buf = mutable.HashMap.empty[U, U2]
     val newMap = this.tree
 
     /**
      * this is the nestloop quadtree approach
      */
-    other.foreach{
-      case(point,b:Box)=>
+    other.foreach {
+      case (point, b: Box) =>
         val ret = newMap.search(b)
 
-        val tmparr=ret.map{case e=>
-          (e.geom.asInstanceOf[K],e.value)
+        val tmparr = ret.map { case e =>
+          (e.geom.asInstanceOf[K], e.value)
         }.toIterator
 
-        val aggresult=f(tmparr)
+        val aggresult = f(tmparr)
 
-        buf.+=(b.asInstanceOf[U]->aggresult)
+        buf.+=(b.asInstanceOf[U] -> aggresult)
     }
 
     buf.toIterator
@@ -200,35 +193,35 @@ class QtreePartition [K, V]
   }
 
   override def knnjoin_[U: ClassTag]
-  (other: SpatialRDDPartition[K, U],  knn:Int, f1:(K)=>Boolean,
-   f2:(V)=>Boolean )
-  : Iterator[(K, Double, Iterator[(K,V)])]=knnjoin_(other.iterator, knn, f1,f2)
+  (other: SpatialRDDPartition[K, U], knn: Int, f1: (K) => Boolean,
+   f2: (V) => Boolean)
+  : Iterator[(K, Double, Iterator[(K, V)])] = knnjoin_(other.iterator, knn, f1, f2)
 
   /** knn join operation
-    * the other rdd is query rdd.
-    * the key is the location of the query point, and value is k
-    */
+   * the other rdd is query rdd.
+   * the key is the location of the query point, and value is k
+   */
   override def knnjoin_[U: ClassTag]
   (other: Iterator[(K, U)],
-   knn:Int,
-   f1:(K)=>Boolean,
-   f2:(V)=>Boolean ): Iterator[(K, Double, Iterator[(K,V)])]={
+   knn: Int,
+   f1: (K) => Boolean,
+   f2: (V) => Boolean): Iterator[(K, Double, Iterator[(K, V)])] = {
 
     val newMap = this.tree
 
-    val ret=ArrayBuffer.empty[(K,Double,Iterator[(K,V)])]
+    val ret = ArrayBuffer.empty[(K, Double, Iterator[(K, V)])]
 
     //nest loop knn search
-    other.foreach{
-      case(p:Point,k:Int)=>
-        var max=0.0
-        val tmp=newMap.nearestKwithDistance(p,k,id=>true).map{
-          case(distance,entry)=>
-            max=Math.max(max,distance)
-            (entry.geom.asInstanceOf[K],entry.value)
+    other.foreach {
+      case (p: Point, k: Int) =>
+        var max = 0.0
+        val tmp = newMap.nearestKwithDistance(p, k, id => true).map {
+          case (distance, entry) =>
+            max = Math.max(max, distance)
+            (entry.geom.asInstanceOf[K], entry.value)
         }.toIterator
 
-        ret.append((p.asInstanceOf[K],max, tmp))
+        ret.append((p.asInstanceOf[K], max, tmp))
     }
 
     ret.toIterator
@@ -239,40 +232,39 @@ class QtreePartition [K, V]
    * @tparam U
    * @return
    */
-  override def rkjoin(other: Iterator[(K, (K,Iterator[(K,V)],Box))],f1:(K)=>Boolean,
-                      f2:(V)=>Boolean, k:Int): Iterator[(K, Iterable[(K,V)])]=
-  {
+  override def rkjoin(other: Iterator[(K, (K, Iterator[(K, V)], Box))], f1: (K) => Boolean,
+                      f2: (V) => Boolean, k: Int): Iterator[(K, Iterable[(K, V)])] = {
 
-    def filterfunction(tuple:Entry[V]):Boolean=
-    {
-      f1(tuple.geom.asInstanceOf[K])&&f2(tuple.value)
+    def filterfunction(tuple: Entry[V]): Boolean = {
+      f1(tuple.geom.asInstanceOf[K]) && f2(tuple.value)
     }
 
-    val tree=this.tree
+    val tree = this.tree
     //this is the nest loop approach for the range search
-    other.map{
-      case(locationpoint,(querypoint,itr,box))
+    other.map {
+      case (locationpoint, (querypoint, itr, box))
       =>
-        val rangeQueryResult=
-          tree.search(box,filterfunction).
-          map(e=>(e.geom,e.value,e.geom.distance(querypoint.asInstanceOf[Point])))
+        val rangeQueryResult =
+          tree.search(box, filterfunction).
+            map(e => (e.geom, e.value, e.geom.distance(querypoint.asInstanceOf[Point])))
 
-        val firstround=itr.map{
-          case(tuple,value)=>
-            (tuple,value,tuple.asInstanceOf[Point].distance(querypoint.asInstanceOf[Point]))
+        val firstround = itr.map {
+          case (tuple, value) =>
+            (tuple, value, tuple.asInstanceOf[Point].distance(querypoint.asInstanceOf[Point]))
         }
 
-        val finalresult=(rangeQueryResult++firstround).sortBy(_._3).distinct.slice(0,k)
-        val ret=finalresult.map{
-          case(location:Point,value,distance) =>(location.asInstanceOf[K],value)
+        val finalresult = (rangeQueryResult ++ firstround).sortBy(_._3).distinct.slice(0, k)
+        val ret = finalresult.map {
+          case (location: Point, value, distance) => (location.asInstanceOf[K], value)
         }
 
-        (querypoint,ret.toIterable)
+        (querypoint, ret.toIterable)
     }
 
   }
 
 }
+
 private[spatialrdd] object QtreePartition {
 
   def apply[K: ClassTag, V: ClassTag]
@@ -281,9 +273,8 @@ private[spatialrdd] object QtreePartition {
 
   def apply[K: ClassTag, U: ClassTag, V: ClassTag]
   (iter: Iterator[(K, V)], z: (K, U) => V, f: (K, V, U) => V)
-  : SpatialRDDPartition[K, V] =
-  {
-    val map = QTree(iter.map{ case(k, v) => Util.toEntry(k,v)})
+  : SpatialRDDPartition[K, V] = {
+    val map = QTree(iter.map { case (k, v) => Util.toEntry(k, v) })
     new QtreePartition(map)
   }
 

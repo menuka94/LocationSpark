@@ -16,32 +16,31 @@ import scala.reflect.ClassTag
  */
 
 class SMapPartition[K, V]
-(protected val data: HashMap[K,V])
+(protected val data: HashMap[K, V])
 (
   override implicit val kTag: ClassTag[K],
- override implicit val vTag: ClassTag[V]
-  )
-  extends SpatialRDDPartition[K,V] with Logging
-{
+  override implicit val vTag: ClassTag[V]
+)
+  extends SpatialRDDPartition[K, V] with Logging {
 
-   //val Quadfilter=new SBQTree(1000)
+  //val Quadfilter=new SBQTree(1000)
   //qtree.trainSBfilter(datapoint)
 
   override def isDefined(k: K): Boolean = {
-      data.contains(k)
+    data.contains(k)
   }
 
   override def size: Long = {
-      data.size
+    data.size
   }
 
   override def iterator: Iterator[(K, V)] = {
-     data.toIterator
+    data.toIterator
   }
 
   /** Return the value for the given key. */
   override def apply(k: K): Option[V] = {
-      this.data.get(k)
+    this.data.get(k)
   }
 
   /**
@@ -52,13 +51,11 @@ class SMapPartition[K, V]
 
     //go through the hash table for searching
 
-    data.filter{
-      case(p:Point,v)=>
-      {
-        box match
-        {
-          case b:Box=>
-              b.contains(p)&&z(Entry(p,v))
+    data.filter {
+      case (p: Point, v) => {
+        box match {
+          case b: Box =>
+            b.contains(p) && z(Entry(p, v))
         }
       }
     }.toIterator
@@ -68,13 +65,12 @@ class SMapPartition[K, V]
   /** Deletes the specified spatial entry elements. Returns a new IndexedRDDPartition that reflects the deletions. */
   override def delete(ks: Iterator[Entry[V]]): SpatialRDDPartition[K, V] = {
 
-    var ret=data
+    var ret = data
 
-    ks.foreach{
-      element=>
-        if(data.contains(element.geom.asInstanceOf[K]))
-        {
-          ret=ret.-(element.geom.asInstanceOf[K])
+    ks.foreach {
+      element =>
+        if (data.contains(element.geom.asInstanceOf[K])) {
+          ret = ret.-(element.geom.asInstanceOf[K])
         }
     }
     new SMapPartition(ret)
@@ -83,7 +79,7 @@ class SMapPartition[K, V]
   /**
    * Gets the values corresponding to the specified keys, if any. those keys can be the two dimensional object
    */
-   def multiget(ks: Iterator[K]): Iterator[(K, V)] = {
+  def multiget(ks: Iterator[K]): Iterator[(K, V)] = {
 
     ks.flatMap { k => this.data.get(k).map(v => (k, v)) }
   }
@@ -96,7 +92,7 @@ class SMapPartition[K, V]
    */
   def sjoin[U: ClassTag]
   (other: SpatialRDDPartition[K, U])
-  (f: (K, V) => V): SpatialRDDPartition[K, V]= sjoin(other.iterator)(f)
+  (f: (K, V) => V): SpatialRDDPartition[K, V] = sjoin(other.iterator)(f)
 
 
   /**
@@ -107,75 +103,63 @@ class SMapPartition[K, V]
    */
   def sjoin[U: ClassTag]
   (other: Iterator[(K, U)])
-  (f: (K, V) => V): SpatialRDDPartition[K, V]={
+  (f: (K, V) => V): SpatialRDDPartition[K, V] = {
 
-    var ret=new HashMap[K,V]
+    var ret = new HashMap[K, V]
 
-    other.foreach
-    {
-      case(pid,b:Box)=>
-        //if(this.Quadfilter.queryBox(b))
-        {
-          this.data.foreach
-          {
-            case(p,v)=>
+    other.foreach {
+      case (pid, b: Box) =>
+        //if(this.Quadfilter.queryBox(b)) {
+        this.data.foreach {
+          case (p, v) =>
 
-              if(b.contains(p.asInstanceOf[Geom])&&(!ret.contains(p)))
-              {
-                ret=ret + (p -> f(p,v))
-              }
-          }
+            if (b.contains(p.asInstanceOf[Geom]) && (!ret.contains(p))) {
+              ret = ret + (p -> f(p, v))
+            }
         }
+      }
 
     }
 
     new SMapPartition(ret)
   }
 
-  override def rjoin[U: ClassTag, U2:ClassTag]
+  override def rjoin[U: ClassTag, U2: ClassTag]
   (other: SpatialRDDPartition[K, U])
-  (f: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2):  Iterator[(U, U2)] = rjoin(other.iterator)(f,f2)
+  (f: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2): Iterator[(U, U2)] = rjoin(other.iterator)(f, f2)
 
-  def rjoin[U: ClassTag,U2:ClassTag]
+  def rjoin[U: ClassTag, U2: ClassTag]
   (other: Iterator[(K, U)])
-  (f: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2):  Iterator[(U, U2)]= {
+  (f: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2): Iterator[(U, U2)] = {
 
-    val buf = mutable.HashMap.empty[Geom,ArrayBuffer[(K,V)]]
+    val buf = mutable.HashMap.empty[Geom, ArrayBuffer[(K, V)]]
 
-    def updatehashmap(key:Geom, v2:V, k2:K)=
-    {
+    def updatehashmap(key: Geom, v2: V, k2: K) = {
       try {
-        if(buf.contains(key))
-        {
-          val tmp1=buf.get(key).get
-          tmp1.append(k2->v2)
-          buf.put(key,tmp1)
-        }else
-        {
-          val tmp1=new ArrayBuffer[(K,V)]
-          tmp1.append((k2->v2))
-          buf.put(key,tmp1)
+        if (buf.contains(key)) {
+          val tmp1 = buf.get(key).get
+          tmp1.append(k2 -> v2)
+          buf.put(key, tmp1)
+        } else {
+          val tmp1 = new ArrayBuffer[(K, V)]
+          tmp1.append((k2 -> v2))
+          buf.put(key, tmp1)
         }
 
-      }catch
-        {
-          case e:Exception=>
-            println("out of memory for appending new value to the sjoin")
-        }
+      } catch {
+        case e: Exception =>
+          println("out of memory for appending new value to the sjoin")
+      }
     }
 
-    other.foreach
-    {
-      case(pid,b:Box)=>
-      {
-        this.data.foreach
-        {
-          case(p,v)=>
+    other.foreach {
+      case (pid, b: Box) => {
+        this.data.foreach {
+          case (p, v) =>
 
-            if(b.contains(p.asInstanceOf[Geom]))
-            {
+            if (b.contains(p.asInstanceOf[Geom])) {
               updatehashmap(b, v, p)
             }
         }
@@ -183,28 +167,24 @@ class SMapPartition[K, V]
 
     }
 
-    buf.toIterator.map{
-      case(g,array)=>
-        val agg=f(array.toIterator)
+    buf.toIterator.map {
+      case (g, array) =>
+        val agg = f(array.toIterator)
         array.clear()
         (g.asInstanceOf[U], agg)
     }
 
   }
 
-    override def knnfilter[U](entry:U, k:Int, z:Entry[V]=>Boolean):Iterator[(K,V, Double)]=
-  {
-    entry match
-    {
-      case e:Point =>
-      {
-        val ret=this.data.map
-        {
-          case(k,v)=>
-              (k,v, entry.asInstanceOf[Entry[V]].geom.distanceSquared(k.asInstanceOf[Point]))
+  override def knnfilter[U](entry: U, k: Int, z: Entry[V] => Boolean): Iterator[(K, V, Double)] = {
+    entry match {
+      case e: Point => {
+        val ret = this.data.map {
+          case (k, v) =>
+            (k, v, entry.asInstanceOf[Entry[V]].geom.distanceSquared(k.asInstanceOf[Point]))
         }
 
-        ret.toList.sortWith( _._3<_._3).take(k).toIterator
+        ret.toList.sortWith(_._3 < _._3).take(k).toIterator
 
       }
     }
@@ -218,21 +198,19 @@ class SMapPartition[K, V]
   override def multiput[U](kvs: Iterator[(K, U)],
                            z: (K, U) => V,
                            f: (K, V, U) => V):
-                          SpatialRDDPartition[K, V] =
-  {
+  SpatialRDDPartition[K, V] = {
 
     var newMap = this.data
 
-    for (ku <- kvs)
-    {
+    for (ku <- kvs) {
 
       val oldV = newMap.get(ku._1).get
 
       val newV = if (oldV == null) z(ku._1, ku._2) else f(ku._1, oldV, ku._2)
 
-      val newEntry=Util.toEntry(ku._1, newV).asInstanceOf[K]
+      val newEntry = Util.toEntry(ku._1, newV).asInstanceOf[K]
 
-      newMap=newMap+(newEntry->newV)
+      newMap = newMap + (newEntry -> newV)
 
     }
 
@@ -240,31 +218,29 @@ class SMapPartition[K, V]
   }
 
   override def knnjoin_[U: ClassTag]
-  (other: SpatialRDDPartition[K, U], knn:Int, f1:(K)=>Boolean,
-   f2:(V)=>Boolean )
-  : Iterator[(K, Double, Iterator[(K,V)])] = knnjoin_(other.iterator, knn, f1,f2)
+  (other: SpatialRDDPartition[K, U], knn: Int, f1: (K) => Boolean,
+   f2: (V) => Boolean)
+  : Iterator[(K, Double, Iterator[(K, V)])] = knnjoin_(other.iterator, knn, f1, f2)
 
   def knnjoin_[U: ClassTag]
-  (other: Iterator[(K, U)], knn:Int, f1:(K)=>Boolean,
-   f2:(V)=>Boolean ):  Iterator[(K, Double, Iterator[(K,V)])]=
-  {
+  (other: Iterator[(K, U)], knn: Int, f1: (K) => Boolean,
+   f2: (V) => Boolean): Iterator[(K, Double, Iterator[(K, V)])] = {
     val newMap = this.data
 
-    val buff=ArrayBuffer.empty[(K,Double, Iterator[(K,V)])]
+    val buff = ArrayBuffer.empty[(K, Double, Iterator[(K, V)])]
 
     //nest loop knn search
-    other.foreach{
-      case(p1:Point,k:Int)=>
-       val ret=this.data.map
-      {
-        case(point:Point,v)=>
-          (point,v, p1.distanceSquared(point))
-      }
+    other.foreach {
+      case (p1: Point, k: Int) =>
+        val ret = this.data.map {
+          case (point: Point, v) =>
+            (point, v, p1.distanceSquared(point))
+        }
 
-        val tmp2=ret.toList.sortWith( _._3<_._3).take(k)
-        val distance=tmp2(k-1)._3
+        val tmp2 = ret.toList.sortWith(_._3 < _._3).take(k)
+        val distance = tmp2(k - 1)._3
 
-        val tmp3=tmp2.map{e=>(e._1.asInstanceOf[K],e._2)}.toIterator
+        val tmp3 = tmp2.map { e => (e._1.asInstanceOf[K], e._2) }.toIterator
 
         buff.append((p1.asInstanceOf[K], distance, tmp3))
     }
@@ -277,21 +253,19 @@ class SMapPartition[K, V]
    * @param other
    * @return
    */
-  override def rkjoin(other: Iterator[(K, (K,Iterator[(K,V)],Box))],f1:(K)=>Boolean,
-                      f2:(V)=>Boolean, k:Int): Iterator[(K, Iterable[(K,V)])]=
-  {
+  override def rkjoin(other: Iterator[(K, (K, Iterator[(K, V)], Box))], f1: (K) => Boolean,
+                      f2: (V) => Boolean, k: Int): Iterator[(K, Iterable[(K, V)])] = {
 
-    other.map{
-      case(locationpoint,(querypoint,itr,box))
+    other.map {
+      case (locationpoint, (querypoint, itr, box))
       =>
-        (querypoint,itr.toIterable)
+        (querypoint, itr.toIterable)
     }
   }
 
 }
 
-private[spatialrdd] object SMapPartition
-{
+private[spatialrdd] object SMapPartition {
 
   def apply[K: ClassTag, V: ClassTag]
   (iter: Iterator[(K, V)]) =
@@ -299,16 +273,15 @@ private[spatialrdd] object SMapPartition
 
   def apply[K: ClassTag, U: ClassTag, V: ClassTag]
   (iter: Iterator[(K, V)], z: (K, U) => V, f: (K, V, U) => V)
-  : SpatialRDDPartition[K, V] =
-  {
+  : SpatialRDDPartition[K, V] = {
 
-    var map =new HashMap[K,V]
+    var map = new HashMap[K, V]
 
     iter.foreach {
-      case(k, v) => map = map + (k -> v)
+      case (k, v) => map = map + (k -> v)
     }
 
-    val smp=new SMapPartition(map)
+    val smp = new SMapPartition(map)
     //smp.Quadfilter.trainSBfilter(iter.map{case(k,v)=>k.asInstanceOf[Geom]})
 
     smp

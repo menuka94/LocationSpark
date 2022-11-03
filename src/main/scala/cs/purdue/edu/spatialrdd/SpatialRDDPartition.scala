@@ -15,9 +15,10 @@ package cs.purdue.edu.spatialrdd
 import scala.reflect.ClassTag
 import cs.purdue.edu.spatialindex.rtree.{Box, Entry}
 
-abstract class SpatialRDDPartition [K, V] extends Serializable {
+abstract class SpatialRDDPartition[K, V] extends Serializable {
 
   protected implicit def kTag: ClassTag[K]
+
   protected implicit def vTag: ClassTag[V]
 
   def size: Long
@@ -47,15 +48,15 @@ abstract class SpatialRDDPartition [K, V] extends Serializable {
 
 
   /**
-   *range search and find points inside the box, and each element meet the condition, and return a iterator,
+   * range search and find points inside the box, and each element meet the condition, and return a iterator,
    * and this iterator can be used for other RDD
    */
-  def filter[U](box:U, z:Entry[V]=>Boolean):Iterator[(K,V)]
+  def filter[U](box: U, z: Entry[V] => Boolean): Iterator[(K, V)]
 
   /**
    * K-NN search for certain point, and return entries meet the condition
    */
-  def knnfilter[U](entry:U, k:Int, z:Entry[V]=>Boolean):Iterator[(K,V, Double)]
+  def knnfilter[U](entry: U, k: Int, z: Entry[V] => Boolean): Iterator[(K, V, Double)]
 
 
   /**
@@ -82,14 +83,14 @@ abstract class SpatialRDDPartition [K, V] extends Serializable {
 
 
   /** spatial range join operation
-  * the other rdd is query rdd.
-    * the key is the location of the range query box, and value is the range query box
-  * the f function apply to the value of the filter condition
-    */
-  def rjoin[U: ClassTag,U2:ClassTag]
+   * the other rdd is query rdd.
+   * the key is the location of the range query box, and value is the range query box
+   * the f function apply to the value of the filter condition
+   */
+  def rjoin[U: ClassTag, U2: ClassTag]
   (other: SpatialRDDPartition[K, U])
-  (f1: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2)
+  (f1: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2)
   : Iterator[(U, U2)]
 
   /**
@@ -98,39 +99,40 @@ abstract class SpatialRDDPartition [K, V] extends Serializable {
    * the key is the location of the range query box, and value is the range query box
    * the f function apply to the value of the filter condition
    */
-  def rjoin[U: ClassTag, U2:ClassTag]
+  def rjoin[U: ClassTag, U2: ClassTag]
   (other: Iterator[(K, U)])
-  (f: (Iterator[(K,V)]) => U2,
-   f2:(U2,U2)=>U2): Iterator[(U, U2)]
+  (f: (Iterator[(K, V)]) => U2,
+   f2: (U2, U2) => U2): Iterator[(U, U2)]
 
 
   /** knn join operation
-    * the other rdd is query rdd.
-    * the key is the location of the query point, and value is k
-    */
+   * the other rdd is query rdd.
+   * the key is the location of the query point, and value is k
+   */
   def knnjoin_[U: ClassTag]
-  (other: SpatialRDDPartition[K, U],  knn:Int, f1:(K)=>Boolean,
-   f2:(V)=>Boolean )
-  : Iterator[(K, Double, Iterator[(K,V)])]
+  (other: SpatialRDDPartition[K, U], knn: Int, f1: (K) => Boolean,
+   f2: (V) => Boolean)
+  : Iterator[(K, Double, Iterator[(K, V)])]
 
   /** knn join operation
-    * the other rdd is query rdd.
-    * the key is the location of the query point, and value is k
-    */
+   * the other rdd is query rdd.
+   * the key is the location of the query point, and value is k
+   */
   def knnjoin_[U: ClassTag]
   (other: Iterator[(K, U)],
-   knn:Int,
-   f1:(K)=>Boolean,
-   f2:(V)=>Boolean ): Iterator[(K, Double, Iterator[(K,V)])]
+   knn: Int,
+   f1: (K) => Boolean,
+   f2: (V) => Boolean): Iterator[(K, Double, Iterator[(K, V)])]
 
 
   /**
    * this range join is used for knn join
+   *
    * @param other
    * @return
    */
-  def rkjoin(other: Iterator[(K, (K,Iterator[(K,V)],Box))],f1:(K)=>Boolean,
-             f2:(V)=>Boolean, k:Int): Iterator[(K, Iterable[(K,V)])]
+  def rkjoin(other: Iterator[(K, (K, Iterator[(K, V)], Box))], f1: (K) => Boolean,
+             f2: (V) => Boolean, k: Int): Iterator[(K, Iterable[(K, V)])]
 
   /**
    * Creates a new partition with values from `elems` that may share an index with `this`,
@@ -142,7 +144,6 @@ abstract class SpatialRDDPartition [K, V] extends Serializable {
    * Restricts the entries to those satisfying the given predicate.
    */
   //def filter(pred: (K, V) => Boolean): SpatialRDDPartition[K, V]
-
 
 
 }

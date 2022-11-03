@@ -13,7 +13,8 @@ import scala.util.Try
  */
 object SpatialJoinWithSchedulerApp {
 
-  val usage = """
+  val usage =
+    """
     Implementation of Spatial Join on Spark
     Usage: spatialjoin --left left_data
                        --right right_data
@@ -24,7 +25,7 @@ object SpatialJoinWithSchedulerApp {
 
   def main(args: Array[String]) {
 
-    if(args.length==0) println(usage)
+    if (args.length == 0) println(usage)
 
     val arglist = args.toList
     type OptionMap = Map[Symbol, Any]
@@ -52,17 +53,17 @@ object SpatialJoinWithSchedulerApp {
 
     val leftFile = options.getOrElse('left, Nil).asInstanceOf[String]
     val rightFile = options.getOrElse('right, Nil).asInstanceOf[String]
-    val masteNode=options.getOrElse('master, Nil).asInstanceOf[String]
+    val masteNode = options.getOrElse('master, Nil).asInstanceOf[String]
     Util.localIndex = options.getOrElse('index, Nil).asInstanceOf[String]
 
     val conf = new SparkConf().setAppName("Test for Spatial JOIN SpatialRDD")
 
-    if(masteNode!=Nil)
+    if (masteNode != Nil)
       conf.setMaster(masteNode)
 
     val spark = new SparkContext(conf)
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
     //this is for WKT format for the left data points
     val leftpoints = spark.textFile(leftFile).map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
@@ -72,9 +73,10 @@ object SpatialJoinWithSchedulerApp {
         (Point(p1.x.toFloat, p1.y.toFloat), "1")
     }
     val leftLocationRDD = SpatialRDD(leftpoints).cache()
-    /** **********************************************************************************/
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
+
+    /** ********************************************************************************* */
     val rightData = spark.textFile(rightFile)
     val rightBoxes = rightData.map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
@@ -93,7 +95,7 @@ object SpatialJoinWithSchedulerApp {
       v1 + v2
     }
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
     val joinresultRdd = leftLocationRDD.rjoin(rightBoxes)(aggfunction1, aggfunction2)
 
     println("join result size " + joinresultRdd.count())

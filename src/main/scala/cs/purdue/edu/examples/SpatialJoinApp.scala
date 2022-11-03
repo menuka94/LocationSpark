@@ -13,7 +13,8 @@ import scala.util.Try
  */
 object SpatialJoinApp {
 
-  val usage = """
+  val usage =
+    """
     Implementation of Spatial Join on Spark
     Usage: spatialjoin --left left_data
                        --right right_data
@@ -23,7 +24,7 @@ object SpatialJoinApp {
 
   def main(args: Array[String]) {
 
-    if(args.length==0) println(usage)
+    if (args.length == 0) println(usage)
 
     val arglist = args.toList
     type OptionMap = Map[Symbol, Any]
@@ -55,7 +56,7 @@ object SpatialJoinApp {
 
     val spark = new SparkContext(conf)
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
     //this is for WKT format for the left data points
     val leftpoints = spark.textFile(leftFile).map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
@@ -65,9 +66,10 @@ object SpatialJoinApp {
         (Point(p1.x.toFloat, p1.y.toFloat), "1")
     }
     val leftLocationRDD = SpatialRDD(leftpoints).cache()
-    /** **********************************************************************************/
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
+
+    /** ********************************************************************************* */
     val rightData = spark.textFile(rightFile)
     val rightBoxes = rightData.map(x => (Try(new WKTReader().read(x))))
       .filter(_.isSuccess).map {
@@ -86,18 +88,21 @@ object SpatialJoinApp {
       v1 + v2
     }
 
-    /** **********************************************************************************/
+    /** ********************************************************************************* */
     var b1 = System.currentTimeMillis
 
     val joinresultRdd = leftLocationRDD.rjoin(rightBoxes)(aggfunction1, aggfunction2)
 
     println("the outer table size: " + rightBoxes.count())
     println("the inner table size: " + leftpoints.count())
-    val tuples=joinresultRdd.map{case(b,v)=>(1,v)}.reduceByKey{case(a,b)=>{a+b}}.map{case(a,b)=>b}.collect()
+    val tuples = joinresultRdd.map { case (b, v) => (1, v) }.reduceByKey { case (a, b) => {
+      a + b
+    }
+    }.map { case (a, b) => b }.collect()
 
-    println("global index: "+ Util.localIndex+" ; local index: "+ Util.localIndex)
-    println("query results size: "+tuples(0))
-    println("spatial range join time: "+(System.currentTimeMillis - b1) +" (ms)")
+    println("global index: " + Util.localIndex + " ; local index: " + Util.localIndex)
+    println("query results size: " + tuples(0))
+    println("spatial range join time: " + (System.currentTimeMillis - b1) + " (ms)")
 
     spark.stop()
 

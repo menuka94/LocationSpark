@@ -1,5 +1,5 @@
 
-package  cs.purdue.edu.spatialindex.rtree
+package cs.purdue.edu.spatialindex.rtree
 
 import scala.math.{min, max, sqrt}
 import java.lang.Float.{isNaN, isInfinite}
@@ -14,10 +14,15 @@ import java.lang.Float.{isNaN, isInfinite}
  */
 sealed trait Geom {
   def x: Float
+
   def y: Float
+
   def x2: Float
+
   def y2: Float
+
   def width: Float = x2 - x
+
   def height: Float = y2 - y
 
   def area: Float = width * height
@@ -85,8 +90,9 @@ sealed trait Geom {
   def contains(geom: Geom): Boolean =
     x <= geom.x && geom.x2 <= x2 && y <= geom.y && geom.y2 <= y2
 
-  def ==(geom: Geom):Boolean=
+  def ==(geom: Geom): Boolean =
     x == geom.x && geom.x2 == x2 && y == geom.y && geom.y2 == y2
+
   /**
    * Returns whether this geometry intersects with the other.
    *
@@ -120,7 +126,7 @@ sealed trait Geom {
     Box(px1, py1, px2, py2)
   }
 
-  override def hashCode:Int = {
+  override def hashCode: Int = {
     /*import java.security.MessageDigest
     val digest = MessageDigest.getInstance("MD5")
     val b1=this.x.toByte
@@ -130,13 +136,14 @@ sealed trait Geom {
     val bytes=Array(b1,b2,b3,b4)
     val md5hash1 = digest.digest(bytes).hashCode()*/
 
-    val t1=this.x*this.y
-    val b2=this.y2*this.x2
+    val t1 = this.x * this.y
+    val b2 = this.y2 * this.x2
 
-    val ret2=((this.x+this.y+this.x2+this.y2+t1*1000+b2*100000)%1000000).toInt
+    val ret2 = ((this.x + this.y + this.x2 + this.y2 + t1 * 1000 + b2 * 100000) % 1000000).toInt
 
     return ret2
   }
+
   /**
    * Return the given geometry's area outside this geometry.
    *
@@ -156,12 +163,17 @@ sealed trait Geom {
 
 case class Point(x: Float, y: Float) extends Geom {
   def x2: Float = x
+
   def y2: Float = y
 
   override def width: Float = 0F
+
   override def height: Float = 0F
+
   override def area: Float = 0F
+
   override def lowerLeft: Point = this
+
   override def upperRight: Point = this
 
   override def distanceSquared(pt: Point): Double = {
@@ -175,45 +187,43 @@ case class Point(x: Float, y: Float) extends Geom {
 
   override def wraps(geom: Geom): Boolean = false
 
-  override def toString():String={
+  override def toString(): String = {
 
-    "("+x+","+y+")"
+    "(" + x + "," + y + ")"
   }
 }
 
 case class Box(x: Float, y: Float, x2: Float, y2: Float) extends Geom {
   override def toBox: Box = this
 
-  override def toString:String={x+","+y+"; "+x2+","+y2}
+  override def toString: String = {
+    x + "," + y + "; " + x2 + "," + y2
+  }
 
-  var knndistancebound:Double=Double.MaxValue
+  var knndistancebound: Double = Double.MaxValue
 
-  def intersectionarea(other:Box):Double=
-  {
+  def intersectionarea(other: Box): Double = {
     Math.abs(
-      Math.max(0, (Math.min(this.y2,other.y2)-Math.max(this.y,other.y)))
-    *
-      Math.max(0, (Math.min(this.x2,other.x2)-Math.max(this.x,other.x)))
+      Math.max(0, (Math.min(this.y2, other.y2) - Math.max(this.y, other.y)))
+        *
+        Math.max(0, (Math.min(this.x2, other.x2) - Math.max(this.x, other.x)))
     )
 
   }
 
-  def intesectBox(other:Box):Box={
+  def intesectBox(other: Box): Box = {
 
-    Box(Math.max(this.x,other.x),Math.max(this.y,other.y), Math.min(this.x2,other.x2),Math.min(this.y2,other.y2))
+    Box(Math.max(this.x, other.x), Math.max(this.y, other.y), Math.min(this.x2, other.x2), Math.min(this.y2, other.y2))
 
   }
 
-  def mindistance(other:Box):Double=
-  {
-    if(this.intersects(other))
-    {
+  def mindistance(other: Box): Double = {
+    if (this.intersects(other)) {
       0
-    }else
-    {
+    } else {
       Math.min(
-        Math.min(Math.abs(this.x2-other.x),Math.abs(this.x-other.x2)),
-        Math.min(Math.abs(this.y2-other.y),Math.abs(this.y-other.y2))
+        Math.min(Math.abs(this.x2 - other.x), Math.abs(this.x - other.x2)),
+        Math.min(Math.abs(this.y2 - other.y), Math.abs(this.y - other.y2))
       )
     }
   }

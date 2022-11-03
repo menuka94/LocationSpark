@@ -9,44 +9,43 @@ import scala.collection.mutable.{HashSet, ArrayBuffer}
 /**
  * Created by merlin on 11/18/15.
  */
-class QtreeForPartion() extends Serializable{
+class QtreeForPartion() extends Serializable {
 
   var root: Node = null
-  var depth=0
+  var depth = 0
 
-  var leafbound=10
+  var leafbound = 10
 
-  var maxpartitionid=0
+  var maxpartitionid = 0
 
-  def this(leafbound:Int) {
+  def this(leafbound: Int) {
     this
-    this.leafbound=leafbound
+    this.leafbound = leafbound
     this.root = new leafwithcount(qtreeUtil.wholespace).spilitLeafNode
   }
 
   /**
    * colone this quadtree's data structure
+   *
    * @return
    */
-  def coloneTree():Node=
-  {
-     def coloneTree(node:Node):Node=
-    {
+  def coloneTree(): Node = {
+    def coloneTree(node: Node): Node = {
       node match {
         case l: leafwithcount =>
           //copy this leaf node
-          val newl=new leafwithcount(l.getbox)
-          newl.id=l.id
-          newl.count=l.count
+          val newl = new leafwithcount(l.getbox)
+          newl.id = l.id
+          newl.count = l.count
           newl
 
         case b: Branch => {
 
-          val newbranch= Branch(b.space)
-          newbranch.ne=coloneTree(b.ne)
-          newbranch.nw=coloneTree(b.nw)
-          newbranch.se=coloneTree(b.se)
-          newbranch.sw=coloneTree(b.sw)
+          val newbranch = Branch(b.space)
+          newbranch.ne = coloneTree(b.ne)
+          newbranch.nw = coloneTree(b.nw)
+          newbranch.se = coloneTree(b.se)
+          newbranch.sw = coloneTree(b.sw)
 
           newbranch
         }
@@ -57,24 +56,22 @@ class QtreeForPartion() extends Serializable{
   }
 
 
-
-
   /**
    * this function is used for training the SBFilter,
    * it never store the data inside the leaf node
+   *
    * @param point
    */
-   def insertPoint(point:Geom): Unit =
-  {
-    insertPoint(this.root,point)
+  def insertPoint(point: Geom): Unit = {
+    insertPoint(this.root, point)
   }
 
   /**
    * this function is used for training the SBQtree
+   *
    * @param point
    */
-  protected def insertPoint(parent: Node, point:Geom): Unit =
-  {
+  protected def insertPoint(parent: Node, point: Geom): Unit = {
     if (!parent.getbox.contains(point)) {
       return
     }
@@ -82,7 +79,7 @@ class QtreeForPartion() extends Serializable{
     parent match {
       case l: leafwithcount => {
         if (l.count < this.leafbound) {
-          l.count+=1
+          l.count += 1
           l.updatecount(point)
           return
 
@@ -90,17 +87,17 @@ class QtreeForPartion() extends Serializable{
           //split this leaf node
           val branch = l.spilitLeafNode
           relinkPointer(l, branch)
-          val subbranch=this.findSubchildren(branch,point)
-          if(subbranch==null)
+          val subbranch = this.findSubchildren(branch, point)
+          if (subbranch == null)
             return
-          insertPoint(subbranch,point)
+          insertPoint(subbranch, point)
         }
       }
 
       case b: Branch => {
         //println("go through this branch node: " + b.getbox.toString)
-        val branch=this.findSubchildren(b,point)
-        insertPoint(branch,point)
+        val branch = this.findSubchildren(b, point)
+        insertPoint(branch, point)
       }
     }
 
@@ -108,11 +105,11 @@ class QtreeForPartion() extends Serializable{
 
   /**
    * compute the frequency of the box to visit the leaf node
+   *
    * @param box
    */
-  def visitleafForBox(box:Box):Unit=
-  {
-    visitleafForBox(box,this.root)
+  def visitleafForBox(box: Box): Unit = {
+    visitleafForBox(box, this.root)
   }
 
   /**
@@ -120,8 +117,7 @@ class QtreeForPartion() extends Serializable{
    * @param box
    * @param node
    */
-  private def visitleafForBox(box:Box, node:Node):Unit=
-  {
+  private def visitleafForBox(box: Box, node: Node): Unit = {
 
     if (!node.getbox.intersects(box)) {
       return
@@ -130,14 +126,13 @@ class QtreeForPartion() extends Serializable{
     node match {
       case l: leafwithcount =>
 
-        if (l.getbox.intersects(box))
-        {
-          l.visitcount+=1
+        if (l.getbox.intersects(box)) {
+          l.visitcount += 1
         }
 
       case b: Branch => {
         //println("brach is "+b.getbox)
-        b.findChildNodes(box).foreach(child=>visitleafForBox(box,child))
+        b.findChildNodes(box).foreach(child => visitleafForBox(box, child))
       }
     }
 
@@ -171,7 +166,7 @@ class QtreeForPartion() extends Serializable{
   /**
    * annotate those leaf node with pid
    */
-  def computePIDofLeaf(total:Int,numPartition:Int):Int={
+  def computePIDofLeaf(total: Int, numPartition: Int): Int = {
 
     //val queue:Queue[Node]=new Queue()
     //this.printTreeStructure()
@@ -180,14 +175,14 @@ class QtreeForPartion() extends Serializable{
 
     queue += this.root
 
-    var pid=0
+    var pid = 0
 
-    val tmp=new ArrayBuffer[leafwithcount]()
+    val tmp = new ArrayBuffer[leafwithcount]()
 
-    val bound=total/numPartition
+    val bound = total / numPartition
 
-    var countindex=0
-    var leafcount=0
+    var countindex = 0
+    var leafcount = 0
 
     while (!queue.isEmpty) {
 
@@ -197,15 +192,13 @@ class QtreeForPartion() extends Serializable{
 
         case l: leafwithcount =>
 
-          if((l.count+countindex)<bound)
-          {
-            countindex=countindex+l.count
-            leafcount+=1
-          }else
-          {
-            tmp.foreach(l=>l.id=pid)
-            pid+=1
-            countindex=0
+          if ((l.count + countindex) < bound) {
+            countindex = countindex + l.count
+            leafcount += 1
+          } else {
+            tmp.foreach(l => l.id = pid)
+            pid += 1
+            countindex = 0
             tmp.clear()
           }
 
@@ -219,20 +212,20 @@ class QtreeForPartion() extends Serializable{
 
       }
 
-    }//for bfs
+    } //for bfs
 
-    tmp.foreach(l=>l.id=pid)
+    tmp.foreach(l => l.id = pid)
 
-    this.maxpartitionid=pid+1
+    this.maxpartitionid = pid + 1
 
-    pid+1
+    pid + 1
 
   }
 
   /**
    * annotate those leaf node with pid
    */
-  def computePIDofLeafDFS(total:Int,numPartition:Int):Int={
+  def computePIDofLeafDFS(total: Int, numPartition: Int): Int = {
 
     //val queue:Queue[Node]=new Queue()
 
@@ -241,12 +234,12 @@ class QtreeForPartion() extends Serializable{
     stack.push(this.root)
     //queue +=
 
-    var pid=0
+    var pid = 0
 
-    val tmp=new ArrayBuffer[leafwithcount]()
+    val tmp = new ArrayBuffer[leafwithcount]()
 
-    val bound=total/numPartition
-    var countindex=0
+    val bound = total / numPartition
+    var countindex = 0
 
     while (!stack.isEmpty) {
 
@@ -256,15 +249,13 @@ class QtreeForPartion() extends Serializable{
 
         case l: leafwithcount =>
 
-          if((l.count+countindex)<bound)
-          {
+          if ((l.count + countindex) < bound) {
 
-            countindex=countindex+l.count
-          }else
-          {
-            tmp.foreach(l=>l.id=pid)
-            pid+=1
-            countindex=0
+            countindex = countindex + l.count
+          } else {
+            tmp.foreach(l => l.id = pid)
+            pid += 1
+            countindex = 0
             tmp.clear()
           }
 
@@ -278,121 +269,111 @@ class QtreeForPartion() extends Serializable{
 
       }
 
-    }//for bfs
+    } //for bfs
 
-    tmp.foreach(l=>l.id=pid)
+    tmp.foreach(l => l.id = pid)
 
-    pid+1
+    pid + 1
 
   }
+
   /**
    * annotate those leaf node based on the query distribution
    */
-  def computePIDBasedQueries(map:Map[Int,Int]):Int={
+  def computePIDBasedQueries(map: Map[Int, Int]): Int = {
 
-    def averagepartition(stat:ArrayBuffer[leafwithcount],startpid:Int, partitionnumber:Int):Int={
+    def averagepartition(stat: ArrayBuffer[leafwithcount], startpid: Int, partitionnumber: Int): Int = {
 
       //randomnize this array list
-      val list=util.Random.shuffle(stat)
+      val list = util.Random.shuffle(stat)
 
-      var eachpartitionnumber=list.size/partitionnumber
+      var eachpartitionnumber = list.size / partitionnumber
 
-      if(eachpartitionnumber==0||eachpartitionnumber<=3)
-         eachpartitionnumber=5
+      if (eachpartitionnumber == 0 || eachpartitionnumber <= 3)
+        eachpartitionnumber = 5
 
-      var pid=startpid
+      var pid = startpid
 
-      if(list.size>1)
-      {
-        list(0).id=pid
-        for(i <-1 to list.size-1)
-        {
-          if(i%eachpartitionnumber==0)
-            pid+=1
-          list(i).id=pid
+      if (list.size > 1) {
+        list(0).id = pid
+        for (i <- 1 to list.size - 1) {
+          if (i % eachpartitionnumber == 0)
+            pid += 1
+          list(i).id = pid
         }
-        pid+1
-      }else if(list.size==1)
-      {
-        list(0).id=pid
+        pid + 1
+      } else if (list.size == 1) {
+        list(0).id = pid
         pid
-      }else
-      {
+      } else {
         pid
       }
 
     }
 
     /**
-     *each partition have the similar number of visit count
+     * each partition have the similar number of visit count
      */
-    def averagesum(stat:ArrayBuffer[leafwithcount],startpid:Int, total:Int, partitionnumber:Int):Int={
+    def averagesum(stat: ArrayBuffer[leafwithcount], startpid: Int, total: Int, partitionnumber: Int): Int = {
 
-      val list=stat.sortBy(l=>(l.visitcount+1)*l.count)(Ordering[Int].reverse)
+      val list = stat.sortBy(l => (l.visitcount + 1) * l.count)(Ordering[Int].reverse)
 
-      val tmp=new ArrayBuffer[leafwithcount]
-      var pid=startpid
-      var tmpsum=0
-      val target=total/partitionnumber
-      var begin=0
-      var end=list.size-1
+      val tmp = new ArrayBuffer[leafwithcount]
+      var pid = startpid
+      var tmpsum = 0
+      val target = total / partitionnumber
+      var begin = 0
+      var end = list.size - 1
 
-      while(begin<=end)
-      {
-         //tmp.+=(list(end))
-         if(tmpsum<target)
-         {
-            if(Math.abs(target-tmpsum-(list(begin).visitcount+1)*list(begin).count)>Math.abs(target-tmpsum-(list(end).visitcount+1)*list(end).count))
-            {
-               tmpsum=tmpsum+(list(end).visitcount+1)*list(end).count
-               tmp.+=(list(end))
-               end=end-1
-            }else
-            {
-               tmp.+=(list(begin))
-               tmpsum=tmpsum+(list(begin).visitcount+1)*list(begin).count
-               begin=begin+1
-            }
+      while (begin <= end) {
+        //tmp.+=(list(end))
+        if (tmpsum < target) {
+          if (Math.abs(target - tmpsum - (list(begin).visitcount + 1) * list(begin).count) > Math.abs(target - tmpsum - (list(end).visitcount + 1) * list(end).count)) {
+            tmpsum = tmpsum + (list(end).visitcount + 1) * list(end).count
+            tmp.+=(list(end))
+            end = end - 1
+          } else {
+            tmp.+=(list(begin))
+            tmpsum = tmpsum + (list(begin).visitcount + 1) * list(begin).count
+            begin = begin + 1
+          }
 
-         }else
-         {
-            tmp.foreach(e=>e.id=pid)
-            pid+=1
-            tmp.clear()
-            tmpsum=0
-         }
+        } else {
+          tmp.foreach(e => e.id = pid)
+          pid += 1
+          tmp.clear()
+          tmpsum = 0
+        }
       }
 
-      if(tmp.size!=0)
-      {
-        pid=averagepartition(tmp,pid,partitionnumber-(pid-startpid))
+      if (tmp.size != 0) {
+        pid = averagepartition(tmp, pid, partitionnumber - (pid - startpid))
       }
 
       pid
     }
 
-    def recomputePidForSkew(list:ArrayBuffer[leafwithcount], startpid:Int, partitionnumber:Int):Int=
-    {
-      var total=0
-      list.foreach(l=> total=total+((l.visitcount+1)*l.count))
-      val threshold=total/partitionnumber
-      if(total==0||threshold==0) //in case the sample is not precise
+    def recomputePidForSkew(list: ArrayBuffer[leafwithcount], startpid: Int, partitionnumber: Int): Int = {
+      var total = 0
+      list.foreach(l => total = total + ((l.visitcount + 1) * l.count))
+      val threshold = total / partitionnumber
+      if (total == 0 || threshold == 0) //in case the sample is not precise
       {
-        averagepartition(list,startpid,partitionnumber)
-      }else // we can find those partition
+        averagepartition(list, startpid, partitionnumber)
+      } else // we can find those partition
       {
-        averagesum(list,startpid,total,partitionnumber)
+        averagesum(list, startpid, total, partitionnumber)
       }
     }
 
     val queue = new scala.collection.mutable.Queue[Node]
 
     queue += this.root
-    val tmp=new ArrayBuffer[leafwithcount]()
-    val nonskew=new ArrayBuffer[leafwithcount]()
+    val tmp = new ArrayBuffer[leafwithcount]()
+    val nonskew = new ArrayBuffer[leafwithcount]()
 
-    var currentpid=0
-    var startpid=0
+    var currentpid = 0
+    var startpid = 0
 
     while (!queue.isEmpty) {
 
@@ -400,34 +381,27 @@ class QtreeForPartion() extends Serializable{
       pnode match {
         case l: leafwithcount =>
 
-          if(map.contains(l.id))
-          {
-            if(tmp.length==0)
-            {
-              currentpid=l.id
+          if (map.contains(l.id)) {
+            if (tmp.length == 0) {
+              currentpid = l.id
               tmp.+=(l)
-            }else
-            {
-              if(currentpid!=l.id)
-              {
-                startpid=recomputePidForSkew(tmp,startpid,map.get(currentpid).get)
+            } else {
+              if (currentpid != l.id) {
+                startpid = recomputePidForSkew(tmp, startpid, map.get(currentpid).get)
                 tmp.clear()
-                currentpid=l.id
+                currentpid = l.id
                 tmp.+=(l)
-              }else
-              {
+              } else {
                 tmp.+=(l)
               }
             }
 
-          }else
-          {
-            if(tmp.size!=0)
-            {
-              startpid=recomputePidForSkew(tmp,startpid,map.get(currentpid).get)
+          } else {
+            if (tmp.size != 0) {
+              startpid = recomputePidForSkew(tmp, startpid, map.get(currentpid).get)
               tmp.clear()
             }
-            currentpid=l.id
+            currentpid = l.id
             nonskew.+=(l)
           }
 
@@ -438,62 +412,58 @@ class QtreeForPartion() extends Serializable{
           queue.enqueue(b.sw)
       }
 
-    }//for bfs
+    } //for bfs
 
-    if(tmp.size!=0)
-    {
-      val partitionnumber=map.get(tmp(0).id).getOrElse(5)
-      startpid=recomputePidForSkew(tmp,startpid,partitionnumber)
+    if (tmp.size != 0) {
+      val partitionnumber = map.get(tmp(0).id).getOrElse(5)
+      startpid = recomputePidForSkew(tmp, startpid, partitionnumber)
       tmp.clear()
     }
 
     //in order to reduce the possiblity of the sampling approach is precise
-    if(nonskew.size>50)
-    {
-      startpid=averagepartition(nonskew,startpid+1,10)
+    if (nonskew.size > 50) {
+      startpid = averagepartition(nonskew, startpid + 1, 10)
     }
-    else
-    {
-      nonskew.foreach(e=>e.id=startpid+1)
+    else {
+      nonskew.foreach(e => e.id = startpid + 1)
     }
 
-    startpid+1
+    startpid + 1
   }
 
   /**
    * get the overlap partition region for the input box
+   *
    * @param box
    * @return
    */
-  def getPIDforBox(box:Box):HashSet[Int]=
-  {
-    val ret=new mutable.HashSet[Int]()
+  def getPIDforBox(box: Box): HashSet[Int] = {
+    val ret = new mutable.HashSet[Int]()
 
-    getPIDforBox(box,ret,this.root)
+    getPIDforBox(box, ret, this.root)
 
     ret
   }
 
   /**
    * recursive to find the overlap leaf node for the input box
+   *
    * @param box
    * @param ret
    * @param n
    */
-  private def getPIDforBox(box:Box,ret:HashSet[Int], n:Node):Unit=
-  {
+  private def getPIDforBox(box: Box, ret: HashSet[Int], n: Node): Unit = {
     n match {
       case l: leafwithcount =>
 
         // println("search leaf "+l.getbox)
-        if (l.getbox.intersects(box))
-        {
+        if (l.getbox.intersects(box)) {
           ret.+=(l.id)
         }
 
       case b: Branch => {
         //println("brach is "+b.getbox)
-        b.findChildNodes(box).foreach(child=>getPIDforBox(box,ret,child))
+        b.findChildNodes(box).foreach(child => getPIDforBox(box, ret, child))
       }
     }
 
@@ -501,38 +471,38 @@ class QtreeForPartion() extends Serializable{
 
   /**
    * for the input box, find the corresponding point in each partition.
-    * @param box
+   *
+   * @param box
    * @return
    */
-  def getPointForRangeQuery(box:Box):HashSet[Point]=
-  {
-    val ret=new mutable.HashSet[Point]()
+  def getPointForRangeQuery(box: Box): HashSet[Point] = {
+    val ret = new mutable.HashSet[Point]()
 
-    getPointForRangeQuery(box,ret,this.root)
+    getPointForRangeQuery(box, ret, this.root)
 
     ret
   }
+
   /**
    * recursive to find the overlap leaf node for the input box
+   *
    * @param box
    * @param ret
    * @param n
    */
-  private def getPointForRangeQuery(box:Box,ret:HashSet[Point], n:Node):Unit=
-  {
+  private def getPointForRangeQuery(box: Box, ret: HashSet[Point], n: Node): Unit = {
     n match {
       case l: leafwithcount =>
 
         //println("search leaf "+l.getbox)
-        if (l.getbox.intersects(box))
-        {
+        if (l.getbox.intersects(box)) {
           //ret.+=(l.id)
-          ret.+=(Point((l.getbox.x+l.getbox.x2)/2,(l.getbox.y+l.getbox.y2)/2))
+          ret.+=(Point((l.getbox.x + l.getbox.x2) / 2, (l.getbox.y + l.getbox.y2) / 2))
         }
 
       case b: Branch => {
         //println("brach is "+b.getbox)
-        b.findChildNodes(box).foreach(child=>getPointForRangeQuery(box,ret,child))
+        b.findChildNodes(box).foreach(child => getPointForRangeQuery(box, ret, child))
       }
     }
 
@@ -540,29 +510,28 @@ class QtreeForPartion() extends Serializable{
 
   /**
    * find which leaf node this leaf belong to
+   *
    * @param p
    * @return
    */
-  def getPID(p:Geom):Int={
+  def getPID(p: Geom): Int = {
 
-      //println("get pid")
+    //println("get pid")
 
-     getPID(this.root,p)
+    getPID(this.root, p)
 
   }
 
-  private def getPID(n:Node,p:Geom):Int={
+  private def getPID(n: Node, p: Geom): Int = {
 
     n match {
       case l: leafwithcount =>
 
-       // println("search leaf "+l.getbox)
+        // println("search leaf "+l.getbox)
 
-        if (l.getbox.contains(p))
-        {
-           l.id
-        }else
-        {
+        if (l.getbox.contains(p)) {
+          l.id
+        } else {
           throw new IllegalStateException("data point is not correct location format")
           0
         }
@@ -571,13 +540,11 @@ class QtreeForPartion() extends Serializable{
 
         //println("brach is "+b.getbox)
 
-       val child=findSubchildren(b,p)
+        val child = findSubchildren(b, p)
 
-        if(child!=null)
-        {
-          getPID(child,p)
-        }else
-        {
+        if (child != null) {
+          getPID(child, p)
+        } else {
           throw new IllegalStateException("data point is not correct location format")
           0
         }
@@ -611,7 +578,7 @@ class QtreeForPartion() extends Serializable{
 
       pnode match {
         case l: leafwithcount =>
-          print(" L(id: " + l.id+" vc:"+l.visitcount +" count:" +l.count+") ")
+          print(" L(id: " + l.id + " vc:" + l.visitcount + " count:" + l.count + ") ")
           numofleaf = numofleaf + 1
 
         case b: Branch =>
@@ -640,26 +607,22 @@ class QtreeForPartion() extends Serializable{
 
   }
 
-  private def findSubchildren(b:Branch,p:Geom):Node={
+  private def findSubchildren(b: Branch, p: Geom): Node = {
 
-    if(b.nw.getbox.contains(p))
-    {
+    if (b.nw.getbox.contains(p)) {
       return b.nw
     }
 
-    if(b.ne.getbox.contains(p))
-    {
+    if (b.ne.getbox.contains(p)) {
       return b.ne
     }
 
-    if(b.sw.getbox.contains(p))
-    {
+    if (b.sw.getbox.contains(p)) {
       return b.sw
 
     }
 
-    if(b.se.getbox.contains(p))
-    {
+    if (b.se.getbox.contains(p)) {
       return b.se
     }
 

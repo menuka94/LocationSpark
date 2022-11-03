@@ -12,19 +12,20 @@ import scala.collection.mutable.ArrayBuffer
 /**
  * this Qtree only support insert rectangle and each leaf node only contain boolean value
  */
+
 /**
  * the spilit leaf box order is NW,NE,SE,SW
  */
 
-case class SBQTree() extends serializable{
+case class SBQTree() extends serializable {
 
   var budget = 0
   var root: Node = null
-  var numofBranch=0
-  var numofLeaf=0
+  var numofBranch = 0
+  var numofLeaf = 0
   var currentbox: Box = null
 
-  val lrucache=new LRU(100)
+  val lrucache = new LRU(100)
 
   def this(size: Int) {
     this
@@ -41,30 +42,30 @@ case class SBQTree() extends serializable{
   /**
    * train the SBFilter from the data,this process work as inserting points into quadtree, but i never record
    * the data itself, it only mark the leaf node with data as leaf, and other leaf as false
+   *
    * @param itr
    */
-  def trainSBfilter(itr: Iterator[Geom])=
-  {
-      itr.foreach{p=>this.insertPoint(p)}
-      //this.getSBFilter()
+  def trainSBfilter(itr: Iterator[Geom]) = {
+    itr.foreach { p => this.insertPoint(p) }
+    //this.getSBFilter()
   }
 
   /**
    * this function is used for training the SBFilter,
    * it never store the data inside the leaf node
+   *
    * @param point
    */
-  protected def insertPoint(point:Geom): Unit =
-  {
-    insertPoint(this.root,point)
+  protected def insertPoint(point: Geom): Unit = {
+    insertPoint(this.root, point)
   }
 
   /**
    * this function is used for training the SBQtree
+   *
    * @param point
    */
-  protected def insertPoint(parent: Node, point:Geom): Unit =
-  {
+  protected def insertPoint(parent: Node, point: Geom): Unit = {
     if (!parent.getbox.contains(point)) {
       return
     }
@@ -73,7 +74,7 @@ case class SBQTree() extends serializable{
       case l: Leaf => {
         if (l.count < qtreeUtil.leafbound) {
           l.flag = true
-          l.count+=1
+          l.count += 1
           return
 
         } else {
@@ -96,8 +97,8 @@ case class SBQTree() extends serializable{
       case b: Branch => {
         //println("go through this branch node: " + b.getbox.toString)
         b.findChildNodes(point).foreach {
-          children=>
-            insertPoint(children,point)
+          children =>
+            insertPoint(children, point)
         }
 
       }
@@ -106,28 +107,29 @@ case class SBQTree() extends serializable{
 
   }
 
-  private def markChildrenAsFalse(branch:Branch)={
+  private def markChildrenAsFalse(branch: Branch) = {
 
     branch.nw match {
-      case l:Leaf => l.flag=false
+      case l: Leaf => l.flag = false
     }
 
     branch.ne match {
-      case l:Leaf => l.flag=false
+      case l: Leaf => l.flag = false
     }
 
     branch.sw match {
-      case l:Leaf => l.flag=false
+      case l: Leaf => l.flag = false
     }
 
     branch.se match {
-      case l:Leaf => l.flag=false
+      case l: Leaf => l.flag = false
     }
 
   }
 
   /**
    * insert a box only if the false negative happen
+   *
    * @param space
    */
   def insertBox(space: Box): Unit = {
@@ -166,19 +168,20 @@ case class SBQTree() extends serializable{
           if (qtreeUtil.getAreaRatio(l.getbox, this.currentbox) > qtreeUtil.leafStopBound) {
 
             val branch = l.spilitLeafNode
-            this.numofBranch+=1
+            this.numofBranch += 1
             relinkPointer(l, branch)
             // spilit the current query box
             val spilitbox = spilitQueryBox(space, l)
 
             spilitbox.foreach {
-              newnode => newnode match {
-                case null =>
-                case _ =>
-                  findoneSubbox(branch, newnode.inputbox).foreach(
-                    overlapnode => insertBox(overlapnode, newnode)
-                  )
-              }
+              newnode =>
+                newnode match {
+                  case null =>
+                  case _ =>
+                    findoneSubbox(branch, newnode.inputbox).foreach(
+                      overlapnode => insertBox(overlapnode, newnode)
+                    )
+                }
             }
           } else {
             //do not spilit this bound
@@ -204,7 +207,7 @@ case class SBQTree() extends serializable{
                   val newleaf = Leaf(bchildren.getbox)
                   newleaf.flag = false
                   relinkPointer(bchildren, newleaf)
-                  this.numofBranch-=1
+                  this.numofBranch -= 1
               }
 
             } else {
@@ -216,16 +219,17 @@ case class SBQTree() extends serializable{
         if (indicator) {
           val spilitbox = spilitQueryBox(space, b)
           spilitbox.foreach {
-            newnode => newnode match {
-              case null =>
-              case _ =>
-                findoneSubbox(b, newnode.inputbox).foreach {
-                  overlapnode => {
-                    //println("overlap node "+overlapnode.getbox.toString)
-                    insertBox(overlapnode, newnode)
+            newnode =>
+              newnode match {
+                case null =>
+                case _ =>
+                  findoneSubbox(b, newnode.inputbox).foreach {
+                    overlapnode => {
+                      //println("overlap node "+overlapnode.getbox.toString)
+                      insertBox(overlapnode, newnode)
+                    }
                   }
-                }
-            }
+              }
           } //for each box
 
         } //if indicator
@@ -237,6 +241,7 @@ case class SBQTree() extends serializable{
 
   /**
    * check whether there are data inside the qspace
+   *
    * @param qspace
    * @return
    */
@@ -248,9 +253,9 @@ case class SBQTree() extends serializable{
   }
 
 
-
   /**
    * query and return the conditional possibility for false
+   *
    * @param qspace
    * @return
    */
@@ -260,13 +265,14 @@ case class SBQTree() extends serializable{
     val sum = Array[Double](1)
     queryBoxWithP(this.root, qspace, sum)
     //println((sum(0)))
-   // println(qspace.area)
+    // println(qspace.area)
     (sum(0) / qspace.area)
 
   }
 
   /**
    * insert a box if the true postive happen
+   *
    * @param space
    */
   def insertTrueBox(space: Box) = {
@@ -279,11 +285,11 @@ case class SBQTree() extends serializable{
    */
   def getSBFilter(): dataSBF = {
 
-    val maxdatasize = this.numofBranch/4
+    val maxdatasize = this.numofBranch / 4
 
     //define the global int array
-    val internal = new Array[Int](this.numofBranch/4) //where 10 is the default size
-    val leaf = new Array[Int](this.numofBranch/4) //where 10 is the default size
+    val internal = new Array[Int](this.numofBranch / 4) //where 10 is the default size
+    val leaf = new Array[Int](this.numofBranch / 4) //where 10 is the default size
 
     var widthInternal = ArrayBuffer[Int]() //number of internal node for that depth
     var widthLeaf = ArrayBuffer[Int]() //number of leaf nodes
@@ -299,7 +305,7 @@ case class SBQTree() extends serializable{
     var leafLocation = 0
     var internalLocation = 0
 
-    var falseleaf=0
+    var falseleaf = 0
     //this is used for the bound number
 
     while (!queue.isEmpty) {
@@ -314,7 +320,7 @@ case class SBQTree() extends serializable{
           }
           else {
             binnaryopt.clearBit(leafLocation, leaf)
-            falseleaf+=1
+            falseleaf += 1
           }
 
           leafLocation += 1
@@ -333,10 +339,10 @@ case class SBQTree() extends serializable{
       front = front + 1
 
       if (front > end) {
-        widthLeaf+=(numberLeaf)
-        widthInternal+=(end - numberLeaf)
+        widthLeaf += (numberLeaf)
+        widthInternal += (end - numberLeaf)
         depth += 1
-        front= 1
+        front = 1
         end = queue.size
         numberLeaf = 0
         //
@@ -346,7 +352,7 @@ case class SBQTree() extends serializable{
 
     //println("# of leaf "+leafLocation)
     //println("# of false leaf "+falseleaf)
-   // println("# of branch "+internalLocation/4)
+    // println("# of branch "+internalLocation/4)
     //println("# of candidate to merge: "+this.lrucache.getNumnode())
     //println("leaf node: "+binnaryopt.getBitString(0,200,leaf))
     dataSBF(maxdatasize, internal, leaf, widthInternal, widthLeaf)
@@ -359,14 +365,14 @@ case class SBQTree() extends serializable{
    */
   def getSBFilterV2(): dataSBFV2 = {
 
-    val maxdatasize = this.numofBranch/4
+    val maxdatasize = this.numofBranch / 4
 
     //define the global int array
     val internal = new Array[Int](maxdatasize) //where 10 is the default size
     val leaf = new Array[Int](maxdatasize) //where 10 is the default size
 
     //var widthInternal = ArrayBuffer[Int]() //number of internal node for that depth
-   // var widthLeaf = ArrayBuffer[Int]() //number of leaf nodes
+    // var widthLeaf = ArrayBuffer[Int]() //number of leaf nodes
 
     val queue = new scala.collection.mutable.Queue[Node]
 
@@ -380,12 +386,12 @@ case class SBQTree() extends serializable{
     var internalLocation = 0
 
     //this is used for the bound number
-    var numOnesToBound=1
-    var numZerosToBound=0
+    var numOnesToBound = 1
+    var numZerosToBound = 0
 
-    val InternalHash = scala.collection.mutable.HashMap.empty[Int,Int]
-    val LeafHash = scala.collection.mutable.HashMap.empty[Int,Int]
-    var falseleaf=0
+    val InternalHash = scala.collection.mutable.HashMap.empty[Int, Int]
+    val LeafHash = scala.collection.mutable.HashMap.empty[Int, Int]
+    var falseleaf = 0
 
     while (!queue.isEmpty) {
 
@@ -399,7 +405,7 @@ case class SBQTree() extends serializable{
           }
           else {
             binnaryopt.clearBit(leafLocation, leaf)
-            falseleaf+=1
+            falseleaf += 1
           }
 
           leafLocation += 1
@@ -414,12 +420,12 @@ case class SBQTree() extends serializable{
           setbitOfBranch(b, internalLocation, internal)
 
           {
-            InternalHash.+=(internalLocation->numOnesToBound*qtreeUtil.binnaryUnit)
-            LeafHash.+=(internalLocation->numZerosToBound)
+            InternalHash.+=(internalLocation -> numOnesToBound * qtreeUtil.binnaryUnit)
+            LeafHash.+=(internalLocation -> numZerosToBound)
           }
 
-          numOnesToBound+=getbitOfBranch(b)
-          numZerosToBound+=4-getbitOfBranch(b)
+          numOnesToBound += getbitOfBranch(b)
+          numZerosToBound += 4 - getbitOfBranch(b)
 
           internalLocation += 4
 
@@ -435,7 +441,7 @@ case class SBQTree() extends serializable{
         //widthLeaf+=(numberLeaf)
         //widthInternal+=(end - numberLeaf)
         depth += 1
-        front= 1
+        front = 1
         end = queue.size
         numberLeaf = 0
         //
@@ -444,11 +450,11 @@ case class SBQTree() extends serializable{
     }
 
     //println("# of leaf "+leafLocation)
-   // println("# of false leaf "+falseleaf)
+    // println("# of false leaf "+falseleaf)
     //println("# of branch "+internalLocation/4)
-   // InternalHash.foreach(println)
+    // InternalHash.foreach(println)
 
-    dataSBFV2(maxdatasize, depth ,internal, leaf, InternalHash,LeafHash)
+    dataSBFV2(maxdatasize, depth, internal, leaf, InternalHash, LeafHash)
 
   }
 
@@ -480,27 +486,27 @@ case class SBQTree() extends serializable{
 
   }
 
-  private def getbitOfBranch(branch: Branch):Int = {
+  private def getbitOfBranch(branch: Branch): Int = {
 
     var count = 0
     branch.nw match {
       case Leaf(_) =>
-      case Branch(_) => count+=1
+      case Branch(_) => count += 1
     }
 
     branch.ne match {
       case Leaf(_) =>
-      case Branch(_) => count+=1
+      case Branch(_) => count += 1
     }
 
     branch.se match {
       case Leaf(_) =>
-      case Branch(_) => count+=1
+      case Branch(_) => count += 1
     }
 
     branch.sw match {
       case Leaf(_) =>
-      case Branch(_) => count+=1
+      case Branch(_) => count += 1
     }
 
     count
@@ -564,23 +570,19 @@ case class SBQTree() extends serializable{
     node match {
       case l: Leaf =>
 
-        if (qspace.intersects(l.getbox))
-        {
+        if (qspace.intersects(l.getbox)) {
           //println("intersect leaf is: "+l.getbox+" l.label "+l.flag)
 
-          if(l.flag==true)
-          {
+          if (l.flag == true) {
             return true
           }
-          else if(l.getbox.contains(qspace)&&l.flag==false)
-          {
+          else if (l.getbox.contains(qspace) && l.flag == false) {
             false
           }
           //we need to procede
           false
 
-        }else
-        {
+        } else {
           false
         }
 
@@ -601,27 +603,24 @@ case class SBQTree() extends serializable{
   }
 
 
-
   private def queryBoxWithP(node: Node, qspace: Box, sum: Array[Double]): Unit = {
     node match {
       case l: Leaf =>
         //println("*"*50)
 
-        if (qspace.contains(l.getbox) && l.flag == false)
-        {
+        if (qspace.contains(l.getbox) && l.flag == false) {
           //println("contain leaf is:"+l.getbox)
           //println("contain leaf area is: "+  l.getbox.area)
           sum(0) = sum(0) + l.getbox.area
-        }else if (!qspace.contains(l.getbox)&&qspace.intersects(l.getbox) && l.flag == false)
-        {
-         // println("l leaf is "+ l.getbox)
-         // println("intersect area is: "+ qspace.intersectionarea(l.getbox))
+        } else if (!qspace.contains(l.getbox) && qspace.intersects(l.getbox) && l.flag == false) {
+          // println("l leaf is "+ l.getbox)
+          // println("intersect area is: "+ qspace.intersectionarea(l.getbox))
           sum(0) = sum(0) + qspace.intersectionarea(l.getbox)
         }
 
       case b: Branch => {
 
-          //println("intersect branch is"+ b.getbox)
+        //println("intersect branch is"+ b.getbox)
 
         b.findChildNodes(qspace).foreach {
           node =>
@@ -801,7 +800,6 @@ case class SBQTree() extends serializable{
   }
 
 
-
   /**
    * return the new parent
    */
@@ -834,20 +832,18 @@ case class SBQTree() extends serializable{
    * (2) once a leaf node is used, update his parent's location in the LRU and move to the tail
    * (3) once the budget is used up, remove it from the lru, and make this head of linkedist as leaf
    */
-  def mergeNodes(budget:Int) = {
+  def mergeNodes(budget: Int) = {
 
-    while(this.numofLeaf>budget&&this.lrucache.getNumnode()>0)
-    {
-      this.lrucache.popHead() match
-      {
+    while (this.numofLeaf > budget && this.lrucache.getNumnode() > 0) {
+      this.lrucache.popHead() match {
         //change this node to leaf node
         //mark this new node based on his children's flag
-        case b:Branch=>
+        case b: Branch =>
           val newleaf = Leaf(b.getbox)
-          newleaf.flag =b.findChildFlag()
+          newleaf.flag = b.findChildFlag()
           relinkPointer(b, newleaf)
-          this.numofLeaf-=3
-          this.numofBranch-=1
+          this.numofLeaf -= 3
+          this.numofBranch -= 1
       }
     }
 
@@ -856,13 +852,11 @@ case class SBQTree() extends serializable{
 
   //val queue:Queue[Node]=new Queue()
 
-  protected  def allchildrenisLeaf(b:Branch):Boolean={
+  protected def allchildrenisLeaf(b: Branch): Boolean = {
 
-    if(b.nw.isInstanceOf[Leaf]&&b.ne.isInstanceOf[Leaf]&&b.sw.isInstanceOf[Leaf]&&b.se.isInstanceOf[Leaf])
-    {
-      (b.nw.asInstanceOf[Leaf].flag&&b.ne.asInstanceOf[Leaf].flag&&b.sw.asInstanceOf[Leaf].flag&&b.se.asInstanceOf[Leaf].flag)
-    }else
-    {
+    if (b.nw.isInstanceOf[Leaf] && b.ne.isInstanceOf[Leaf] && b.sw.isInstanceOf[Leaf] && b.se.isInstanceOf[Leaf]) {
+      (b.nw.asInstanceOf[Leaf].flag && b.ne.asInstanceOf[Leaf].flag && b.sw.asInstanceOf[Leaf].flag && b.se.asInstanceOf[Leaf].flag)
+    } else {
       false
     }
 
@@ -870,10 +864,10 @@ case class SBQTree() extends serializable{
 
   /**
    * for one branch with four children is leaf and all their flag is true
+   *
    * @return
    */
-  def mergeBranchWIthAllTrueLeafNode() :Int=
-  {
+  def mergeBranchWIthAllTrueLeafNode(): Int = {
     val queue = new scala.collection.mutable.Queue[Node]
     queue += this.root
 
@@ -881,15 +875,15 @@ case class SBQTree() extends serializable{
     var end = queue.length
     var depth = 0
 
-    var numAlltrue=0
+    var numAlltrue = 0
     while (!queue.isEmpty) {
 
       val pnode = queue.dequeue()
 
       pnode match {
         case l: Leaf =>
-          //print(" L(" + l.flag + ") ")
-         //numofleaf = numofleaf + 1
+        //print(" L(" + l.flag + ") ")
+        //numofleaf = numofleaf + 1
 
         case b: Branch =>
           queue.enqueue(b.nw)
@@ -897,14 +891,13 @@ case class SBQTree() extends serializable{
           queue.enqueue(b.se)
           queue.enqueue(b.sw)
 
-          if(allchildrenisLeaf(b))
-          {
-            numAlltrue+=1
+          if (allchildrenisLeaf(b)) {
+            numAlltrue += 1
             val newleaf = Leaf(b.getbox)
-            newleaf.flag =b.findChildFlag()
+            newleaf.flag = b.findChildFlag()
             relinkPointer(b, newleaf)
-            this.numofLeaf-=3
-            this.numofBranch-=1
+            this.numofLeaf -= 3
+            this.numofBranch -= 1
           }
       }
 
@@ -924,7 +917,6 @@ case class SBQTree() extends serializable{
   }
 
 
-
   /**
    * alignEdge=1011 is the binary code to require which edge to algin with quadtree block
    * the order is North, east, south, west,
@@ -938,6 +930,7 @@ object SBQTree {
 
   /**
    * build a QTree from a query box
+   *
    * @param querybox
    */
   def apply(querybox: Box): SBQTree = {
@@ -972,17 +965,18 @@ object SBQTree {
  * (2) propose the batch and clock based approach
  * (3)
  */
-class QTreeCache() extends SBQTree
-{
+class QTreeCache() extends SBQTree {
 
   def this(size: Int) {
     this
     budget = size
     this.root = Leaf(qtreeUtil.wholespace).spilitLeafNode
   }
+
   /**
    * insert a box and record the internal node to merge
    * this is 50 times slow the original approach
+   *
    * @param space
    */
   def insertBoxWithCache(space: Box): Unit = {
@@ -1022,8 +1016,8 @@ class QTreeCache() extends SBQTree
           if (qtreeUtil.getAreaRatio(l.getbox, this.currentbox) > qtreeUtil.leafStopBound) {
 
             val branch = l.spilitLeafNode
-            this.numofBranch+=1
-            this.numofLeaf+=3
+            this.numofBranch += 1
+            this.numofLeaf += 3
 
             relinkPointer(l, branch)
             //remove this node from the candidate
@@ -1035,22 +1029,22 @@ class QTreeCache() extends SBQTree
             // spilit the current query box
             val spilitbox = spilitQueryBox(space, l)
 
-            var allleaf=true
+            var allleaf = true
 
             spilitbox.foreach {
-              newnode => newnode match {
-                case null =>
-                case _ =>
-                  findoneSubbox(branch, newnode.inputbox).foreach {
-                    overlapnode =>
-                      allleaf=allleaf&&insertBoxWithCache(overlapnode, newnode)
-                  }
-              }
+              newnode =>
+                newnode match {
+                  case null =>
+                  case _ =>
+                    findoneSubbox(branch, newnode.inputbox).foreach {
+                      overlapnode =>
+                        allleaf = allleaf && insertBoxWithCache(overlapnode, newnode)
+                    }
+                }
             }
 
             //if whole children node is leaf node, put this node into the LRU
-            if(allleaf)
-            {
+            if (allleaf) {
               lrucache.setNode(branch)
             }
 
@@ -1081,8 +1075,8 @@ class QTreeCache() extends SBQTree
                   val newleaf = Leaf(bchildren.getbox)
                   newleaf.flag = false
                   relinkPointer(bchildren, newleaf)
-                  this.numofLeaf-=3
-                  this.numofBranch-=1
+                  this.numofLeaf -= 3
+                  this.numofBranch -= 1
               }
 
             } else {
@@ -1095,23 +1089,23 @@ class QTreeCache() extends SBQTree
         if (indicator) {
           val spilitbox = spilitQueryBox(space, b)
           spilitbox.foreach {
-            newnode => newnode match {
-              case null =>
-              case _ =>
-                var allleaf=true
-                findoneSubbox(b, newnode.inputbox).foreach {
-                  overlapnode => {
-                    //println("overlap node "+overlapnode.getbox.toString)
-                    allleaf=allleaf&&insertBoxWithCache(overlapnode, newnode)
+            newnode =>
+              newnode match {
+                case null =>
+                case _ =>
+                  var allleaf = true
+                  findoneSubbox(b, newnode.inputbox).foreach {
+                    overlapnode => {
+                      //println("overlap node "+overlapnode.getbox.toString)
+                      allleaf = allleaf && insertBoxWithCache(overlapnode, newnode)
+                    }
                   }
-                }
 
-                if(allleaf==true)
-                {
-                  //this branch with four leaf node
-                  lrucache.setNode(b)
-                }
-            }
+                  if (allleaf == true) {
+                    //this branch with four leaf node
+                    lrucache.setNode(b)
+                  }
+              }
           } //for each box
 
         } //if indicator
@@ -1124,33 +1118,31 @@ class QTreeCache() extends SBQTree
 
   /**
    * this way to query the index, need to mark record the query frequency in the LRU cache
+   *
    * @param qspace
    * @return
    */
-  def queryBoxWithCache(qspace:Box):Boolean={
+  def queryBoxWithCache(qspace: Box): Boolean = {
 
     queryBoxWithCache(this.root, qspace)
 
   }
 
   /**
-   *if one leaf node is used, we put its parent into the tail of queue
+   * if one leaf node is used, we put its parent into the tail of queue
    */
   private def queryBoxWithCache(node: Node, qspace: Box): Boolean = {
 
     node match {
       case l: Leaf =>
-        if (qspace.intersects(l.getbox)&&l.flag==true)
-        {
+        if (qspace.intersects(l.getbox) && l.flag == true) {
           lrucache.putNodeTotail(l.parent)
           l.flag
-        }else if(l.getbox.contains(qspace)&&l.flag==false)
-        {
+        } else if (l.getbox.contains(qspace) && l.flag == false) {
           //if this node is used, we put its parent into the tail of cache
           lrucache.putNodeTotail(l.parent)
           false
-        }else
-        {
+        } else {
           true
         }
 
@@ -1170,31 +1162,29 @@ class QTreeCache() extends SBQTree
 }
 
 
-case class LRU()
-{
+case class LRU() {
   //val list=mutable.DoubleLinkedList.empty[Node]
 
-  val list=mutable.ListBuffer.empty[Node]
+  val list = mutable.ListBuffer.empty[Node]
 
-  var cachmaxsize=0
+  var cachmaxsize = 0
 
-  def this(maxsize:Int)
-  {
+  def this(maxsize: Int) {
     this
-    cachmaxsize=maxsize
+    cachmaxsize = maxsize
   }
 
   //private case class lnode(value:Node,next:Node)
-  val hash=mutable.HashMap.empty[Node,Node]
+  val hash = mutable.HashMap.empty[Node, Node]
 
 
-  def getNumnode():Int={
+  def getNumnode(): Int = {
     this.list.size
   }
 
-  def popHead():Node={
+  def popHead(): Node = {
 
-    val ret=list.head
+    val ret = list.head
     hash.remove(ret)
     list.drop(0)
     ret
@@ -1202,53 +1192,48 @@ case class LRU()
 
   /**
    * put this node into the tail of list
+   *
    * @param update
    */
-  def setNode(update:Node)=
-  {
+  def setNode(update: Node) = {
 
     //var b2=System.currentTimeMillis
 
-    if(hash.contains(update))
-    {
+    if (hash.contains(update)) {
       list.-=(update)
       list.append(update)
       //list.insert(list.length,update)
     }
-    else
-    {
-      hash.put(update,update)
+    else {
+      hash.put(update, update)
       list.append(update)
     }
 
-   // println("set node time: "+(System.currentTimeMillis-b2) +" ms")
+    // println("set node time: "+(System.currentTimeMillis-b2) +" ms")
 
   }
 
-  def appendNode(update:Node)={
+  def appendNode(update: Node) = {
 
-    if(hash.contains(update))
-    {
+    if (hash.contains(update)) {
       //list.insert(list.length,update)
     }
-    else
-    {
-      hash.put(update,update)
+    else {
+      hash.put(update, update)
       list.append(update)
     }
   }
 
   /**
    * put this node into the tail of list
+   *
    * @param update
    */
-  def putNodeTotail(update:Node)=
-  {
+  def putNodeTotail(update: Node) = {
 
-   //var b2=System.currentTimeMillis
+    //var b2=System.currentTimeMillis
 
-    if(hash.contains(update))
-    {
+    if (hash.contains(update)) {
       list.-=(update)
       list.append(update)
       //list.insert(list.length,update)
@@ -1258,10 +1243,9 @@ case class LRU()
 
   }
 
-  def removeNode(update:Node)={
+  def removeNode(update: Node) = {
 
-    if(hash.contains(update))
-    {
+    if (hash.contains(update)) {
       list.-=(update)
       //list.insert(list.length,update)
     }

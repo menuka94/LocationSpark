@@ -34,21 +34,22 @@ sealed abstract class HasGeom {
  * of entries. This design is commmon to RTree implementations and it
  * seemed like a good idea to keep the nomenclature the same.
  */
-sealed abstract class Node[V] extends HasGeom { self =>
+sealed abstract class Node[V] extends HasGeom {
+  self =>
   def box: Box
+
   def geom: Geom = box
 
   def children: Vector[HasGeom]
 
-  var knnboundary=Double.MaxValue
+  var knnboundary = Double.MaxValue
 
-  def updatebound(newbound:Double)=
-  {
-    if(newbound<knnboundary)
-      knnboundary=newbound
+  def updatebound(newbound: Double) = {
+    if (newbound < knnboundary)
+      knnboundary = newbound
   }
 
-  def sortnode:Node[V]
+  def sortnode: Node[V]
 
   /**
    * Put all the entries this node contains (directly or indirectly)
@@ -57,12 +58,14 @@ sealed abstract class Node[V] extends HasGeom { self =>
    */
   def entries: Vector[Entry[V]] = {
     val buf = ArrayBuffer.empty[Entry[V]]
+
     def recur(node: Node[V]): Unit = node match {
       case Leaf(children, _) =>
         buf ++= children
       case Branch(children, _) =>
         children.foreach(recur)
     }
+
     recur(this)
     buf.toVector
   }
@@ -92,7 +95,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
       val pad = " " * i
       val a = node.box.area
       node match {
-        case lf @ Leaf(children, box) =>
+        case lf@Leaf(children, box) =>
           val pad2 = " " * (i + 1)
           sb.append(s"$pad leaf $a $box:\n")
           children.foreach { case Entry(pt, value) =>
@@ -103,6 +106,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
           children.foreach(c => prettyRecur(c, i + 1, sb))
       }
     }
+
     val sb = new StringBuilder
     prettyRecur(this, 0, sb)
     sb.toString
@@ -115,11 +119,11 @@ sealed abstract class Node[V] extends HasGeom { self =>
    * replacement. There are two possible situations:
    *
    * 1. We can replace this node with a new node. This is the common
-   *    case.
+   * case.
    *
    * 2. This node was already "full", so we can't just replace it with
-   *    a single node. Instead, we will split this node into
-   *    (presumably) two new nodes, and return a vector of them.
+   * a single node. Instead, we will split this node into
+   * (presumably) two new nodes, and return a vector of them.
    *
    * The reason we are using vector here is that it simplifies the
    * implementation, and also because eventually we may support bulk
@@ -129,11 +133,10 @@ sealed abstract class Node[V] extends HasGeom { self =>
     this match {
       case Leaf(children, box) =>
 
-        var cs=children
+        var cs = children
 
-        if(!children.contains(entry))
-        {
-            cs = children :+ entry
+        if (!children.contains(entry)) {
+          cs = children :+ entry
         }
 
         if (cs.length <= MaxEntries) {
@@ -209,16 +212,16 @@ sealed abstract class Node[V] extends HasGeom { self =>
    * The return value can be understood as follows:
    *
    * 1. None: the entry was not found in this node. This is the most
-   *    common case.
+   * common case.
    *
    * 2. Some((es, None)): the entry was found, and this node was
-   *    removed (meaning after removal it had too few other
-   *    children). The 'es' vector are entries that need to be readded
-   *    to the RTree.
+   * removed (meaning after removal it had too few other
+   * children). The 'es' vector are entries that need to be readded
+   * to the RTree.
    *
    * 3. Some((es, Some(node))): the entry was found, and this node
-   *    should be replaced by 'node'. Like above, the 'es' vector
-   *    contains entries that should be readded.
+   * should be replaced by 'node'. Like above, the 'es' vector
+   * contains entries that should be readded.
    *
    * Because adding entries may require rebalancing the tree, we defer
    * the insertions until after the removal is complete and then readd
@@ -254,6 +257,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
   def genericSearch(space: Box, check: Geom => Boolean, f: Entry[V] => Boolean): Seq[Entry[V]] =
     if (!space.isFinite) Nil else {
       val buf = ArrayBuffer.empty[Entry[V]]
+
       def recur(node: Node[V]): Unit = node match {
         case Leaf(children, box) =>
           children.foreach { c =>
@@ -264,6 +268,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
             if (space.intersects(box)) recur(c)
           }
       }
+
       if (space.intersects(box)) recur(this)
       buf
     }
@@ -314,7 +319,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
         cs.foreach { case (d, node) =>
           if (d >= dist) return result //scalastyle:ignore
           node.nearest(pt, dist) match {
-            case some @ Some((d, _)) =>
+            case some@Some((d, _)) =>
               dist = d
               result = some
             case None =>
@@ -363,13 +368,13 @@ sealed abstract class Node[V] extends HasGeom { self =>
    * This method returns the distance of the farthest entry that is
    * still included.``
    */
-  def nearestK(pt: Point, k: Int, d0: Double, z:Entry[V]=>Boolean, pq: PriorityQueue[(Double, Entry[V])]): Double = {
+  def nearestK(pt: Point, k: Int, d0: Double, z: Entry[V] => Boolean, pq: PriorityQueue[(Double, Entry[V])]): Double = {
     var dist: Double = d0
     this match {
       case Leaf(children, box) =>
         children.foreach { entry =>
           val d = entry.geom.distance(pt)
-          if(z(entry)) //meet the entry condition
+          if (z(entry)) //meet the entry condition
           {
             if (d < dist) {
               pq += ((d, entry))
@@ -416,6 +421,7 @@ sealed abstract class Node[V] extends HasGeom { self =>
           }
           n
       }
+
       if (space.intersects(box)) recur(this) else 0
     }
 
@@ -443,9 +449,8 @@ sealed abstract class Node[V] extends HasGeom { self =>
 case class Branch[V](children: Vector[Node[V]], box: Box) extends Node[V] {
 
 
-  def sortnode:Node[V]=
-  {
-    Branch(this.children.sortBy(_.geom.x),this.box)
+  def sortnode: Node[V] = {
+    Branch(this.children.sortBy(_.geom.x), this.box)
   }
 
   def remove(entry: Entry[V]): Option[(Joined[Entry[V]], Option[Node[V]])] = {
@@ -483,9 +488,8 @@ case class Branch[V](children: Vector[Node[V]], box: Box) extends Node[V] {
 
 case class Leaf[V](children: Vector[Entry[V]], box: Box) extends Node[V] {
 
-  def sortnode:Node[V]=
-  {
-    Leaf(this.children.sortBy(_.geom.x),this.box)
+  def sortnode: Node[V] = {
+    Leaf(this.children.sortBy(_.geom.x), this.box)
   }
 
   def remove(entry: Entry[V]): Option[(Joined[Entry[V]], Option[Node[V]])] = {
@@ -559,8 +563,13 @@ object Node {
     val nodes1 = ArrayBuffer(seed1)
     val nodes2 = ArrayBuffer(seed2)
 
-    def add1(node: M): Unit = { nodes1 += node; box1 = box1.expand(node.geom) }
-    def add2(node: M): Unit = { nodes2 += node; box2 = box2.expand(node.geom) }
+    def add1(node: M): Unit = {
+      nodes1 += node; box1 = box1.expand(node.geom)
+    }
+
+    def add2(node: M): Unit = {
+      nodes2 += node; box2 = box2.expand(node.geom)
+    }
 
     while (buf.nonEmpty) {
 
@@ -633,10 +642,18 @@ object Node {
       var i = 1
       while (i < pairs.length) {
         val (a, b) = pairs(i)
-        if (a < amin) { amin = a }
-        if (a > amax) { amax = a; right = i }
-        if (b > bmax) { bmax = b }
-        if (b < bmin) { bmin = b; left = i }
+        if (a < amin) {
+          amin = a
+        }
+        if (a > amax) {
+          amax = a; right = i
+        }
+        if (b > bmax) {
+          bmax = b
+        }
+        if (b < bmin) {
+          bmin = b; left = i
+        }
         i += 1
       }
 

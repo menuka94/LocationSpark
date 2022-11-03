@@ -7,122 +7,109 @@ import scala.collection.mutable.{ArrayBuffer, PriorityQueue}
 /**
  * Created by merlin on 11/23/15.
  */
-case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
+case class QTree[V](LEAF_MAX_CAPACITY: Int, space: Box) {
 
   var root: Node = new leafwithstorage(space)
-  var depth=0
-  var size=0
+  var depth = 0
+  var size = 0
 
   /**
    * Insert a value into the tree at (x, y), returning a new tree.
    */
-  def insert(x: Float, y: Float, value: V):Unit =
-  {
+  def insert(x: Float, y: Float, value: V): Unit = {
     insert(Entry(Point(x, y), value))
   }
 
   /**
    * Insert a value into the tree at (x, y), returning a new tree.
    */
-  def insert(x:Point, value: V):Unit=
-  {
+  def insert(x: Point, value: V): Unit = {
     insert(Entry(x, value))
   }
 
   /**
    * Insert an entry into the tree, returning a new tree.
    */
-  def insert(entry: Entry[V]):Unit= {
+  def insert(entry: Entry[V]): Unit = {
 
-      this.insert(this.root,entry)
+    this.insert(this.root, entry)
   }
 
   /**
    * Insert an entry into the tree, and users can define the function for handling the
    * duplicate keys, for example, one location can have the same keys, but different text information and time
    */
-  def insert(entry: Entry[V], f:(V,V)=>V):Unit= {
+  def insert(entry: Entry[V], f: (V, V) => V): Unit = {
 
-    def rucr(node:Node, entry:Entry[V],f:(V,V)=>V):Unit= {
+    def rucr(node: Node, entry: Entry[V], f: (V, V) => V): Unit = {
 
-      if(!this.root.getbox.contains(entry.geom))
-      {
+      if (!this.root.getbox.contains(entry.geom)) {
         return
       }
 
-      node match
-      {
-        case l: leafwithstorage[V]=>
-          if(l.count<this.LEAF_MAX_CAPACITY)
-          {
-              if(l.storage.contains(entry.geom))
-              {
-                val oldv=l.storage.get(entry.geom).get
-                val newv=f(entry.value,oldv)
-                l.storage.put(entry.geom,newv)
-              }else
-              {
-                l.addEntry(entry)
-                //size+=1
-              }
-            size+=1
-          }else
-          {
-            val subbranch=l.spilitLeafNode
-            this.size-=l.storage.size
-            l.storage.foreach{
-              case(k,v)=>
-                this.insert(subbranch,Entry[V](k.asInstanceOf[Geom],v))
+      node match {
+        case l: leafwithstorage[V] =>
+          if (l.count < this.LEAF_MAX_CAPACITY) {
+            if (l.storage.contains(entry.geom)) {
+              val oldv = l.storage.get(entry.geom).get
+              val newv = f(entry.value, oldv)
+              l.storage.put(entry.geom, newv)
+            } else {
+              l.addEntry(entry)
+              //size+=1
+            }
+            size += 1
+          } else {
+            val subbranch = l.spilitLeafNode
+            this.size -= l.storage.size
+            l.storage.foreach {
+              case (k, v) =>
+                this.insert(subbranch, Entry[V](k.asInstanceOf[Geom], v))
             }
             l.clean
-            relinkPointer(l,subbranch)
-            rucr(subbranch,entry,f)
+            relinkPointer(l, subbranch)
+            rucr(subbranch, entry, f)
           }
-        case b: Branch=>
-          val subbranch=this.findSubchildren(b,entry.geom)
-          rucr(subbranch,entry,f)
+        case b: Branch =>
+          val subbranch = this.findSubchildren(b, entry.geom)
+          rucr(subbranch, entry, f)
       }
 
     }
 
-    rucr(this.root,entry,f)
+    rucr(this.root, entry, f)
   }
 
   /**
    * Insert an entry into the tree, returning a new tree.
    */
- private def insert(node:Node, entry: Entry[V]):Unit= {
+  private def insert(node: Node, entry: Entry[V]): Unit = {
 
-    if(!node.getbox.contains(entry.geom))
-    {
+    if (!node.getbox.contains(entry.geom)) {
       return
     }
 
-    node match
-    {
-      case l: leafwithstorage[V]=>
-        if(l.count<this.LEAF_MAX_CAPACITY)
-          {
-              if(l.addEntry(entry))
-              {
-                size+=1
-              }
-
-          }else
-          {
-            val subbranch=l.spilitLeafNode
-            this.size-=l.storage.size
-            l.storage.foreach{
-              case(k,v)=>
-                this.insert(subbranch,Entry[V](k.asInstanceOf[Geom],v))
-            }
-            l.clean
-            relinkPointer(l,subbranch)
-            this.insert(subbranch,entry)
+    node match {
+      case l: leafwithstorage[V] =>
+        if (l.count < this.LEAF_MAX_CAPACITY) {
+          if (l.addEntry(entry)) {
+            size += 1
           }
-      case b: Branch=>
-        val subbranch=this.findSubchildren(b,entry.geom)
-        insert(subbranch,entry)
+
+        } else {
+          val subbranch = l.spilitLeafNode
+          this.size -= l.storage.size
+          l.storage.foreach {
+            case (k, v) =>
+              this.insert(subbranch, Entry[V](k.asInstanceOf[Geom], v))
+          }
+          l.clean
+          relinkPointer(l, subbranch)
+          this.insert(subbranch, entry)
+        }
+      case b: Branch =>
+        val subbranch = this.findSubchildren(b, entry.geom)
+        insert(subbranch, entry)
     }
 
   }
@@ -130,18 +117,16 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * return the new parent
    */
-  protected def relinkPointer(old: Node, branch: Node):Unit = {
+  protected def relinkPointer(old: Node, branch: Node): Unit = {
 
-    if(old.parent==null&&(!old.equals(this.root)))
-    {
+    if (old.parent == null && (!old.equals(this.root))) {
       println("XXXXXXXXXX")
       return
     }
 
-    if(old.equals(this.root))
-    {
-       this.root=branch
-       return
+    if (old.equals(this.root)) {
+      this.root = branch
+      return
     }
 
     old.parent match {
@@ -166,30 +151,27 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
 
   /**
    * find sub branch to insert
+   *
    * @param b
    * @param p
    * @return
    */
-  private def findSubchildren(b:Branch,p:Geom):Node={
+  private def findSubchildren(b: Branch, p: Geom): Node = {
 
-    if(b.nw.getbox.contains(p))
-    {
+    if (b.nw.getbox.contains(p)) {
       return b.nw
     }
 
-    if(b.ne.getbox.contains(p))
-    {
+    if (b.ne.getbox.contains(p)) {
       return b.ne
     }
 
-    if(b.sw.getbox.contains(p))
-    {
+    if (b.sw.getbox.contains(p)) {
       return b.sw
 
     }
 
-    if(b.se.getbox.contains(p))
-    {
+    if (b.se.getbox.contains(p)) {
       return b.se
     }
 
@@ -199,17 +181,15 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * Insert entries into the tree, returning a new tree.
    */
-  def insertAll(entries: Iterable[Entry[V]])=
-  {
-    entries.foreach(e=>this.insert(e))
+  def insertAll(entries: Iterable[Entry[V]]) = {
+    entries.foreach(e => this.insert(e))
   }
 
   /**
    * Insert entries into the tree, returning a new tree.
    */
-  def insertAll(entries: Iterable[Entry[V]], f:(V,V)=>V)=
-  {
-    entries.foreach(e=>this.insert(e,f))
+  def insertAll(entries: Iterable[Entry[V]], f: (V, V) => V) = {
+    entries.foreach(e => this.insert(e, f))
   }
 
   /**
@@ -217,27 +197,24 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
    *
    * If the entry was not present, the tree is simply returned.
    */
-  def remove(entry: Entry[V]):Boolean=
-  {
-      this.remove(entry,this.root)
+  def remove(entry: Entry[V]): Boolean = {
+    this.remove(entry, this.root)
   }
 
-  private def remove(entry: Entry[V], node:Node):Boolean={
+  private def remove(entry: Entry[V], node: Node): Boolean = {
 
     node match {
       case l: leafwithstorage[V] =>
-        if(l.removeEntry(entry))
-        {
-          size-=1
+        if (l.removeEntry(entry)) {
+          size -= 1
           true
-        }else
-        {
+        } else {
           false
         }
 
       case b: Branch => {
-        val subbranch=this.findSubchildren(b,entry.geom)
-        remove(entry,subbranch)
+        val subbranch = this.findSubchildren(b, entry.geom)
+        remove(entry, subbranch)
       }
     }
 
@@ -247,93 +224,76 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * Remove entries from the tree, returning a new tree.
    */
-  def removeAll(entries: Iterable[Entry[V]]) =
-  {
-    entries.foreach(e=>this.remove(e))
+  def removeAll(entries: Iterable[Entry[V]]) = {
+    entries.foreach(e => this.remove(e))
   }
 
   /**
    * Return a sequence of all entries found in the given search space.
    */
-  def search(space: Box): Seq[Entry[V]] =
-  {
+  def search(space: Box): Seq[Entry[V]] = {
     //val ret=ArrayBuffer.empty[Entry[V]]
-    this.search(space,(id)=>true)
+    this.search(space, (id) => true)
   }
 
   /**
    * Return a sequence of all entries found in the given search space.
    */
-  def search(space: Box, f: Entry[V] => Boolean): Seq[Entry[V]] =
-  {
-    val ret=ArrayBuffer.empty[Entry[V]]
+  def search(space: Box, f: Entry[V] => Boolean): Seq[Entry[V]] = {
+    val ret = ArrayBuffer.empty[Entry[V]]
 
-    def recur(space: Box, node:Node, f: Entry[V] => Boolean):Unit=
-    {
-      node match
-      {
-        case l:leafwithstorage[V]=>
-          if(l.getbox.intersects(space))
-          {
-            l.storage.foreach{
-              case(e:Geom,v)=>
-                if(space.contains(e)&&f(Entry[V](e,v)))
-                {
-                  ret.append(Entry[V](e,v))
+    def recur(space: Box, node: Node, f: Entry[V] => Boolean): Unit = {
+      node match {
+        case l: leafwithstorage[V] =>
+          if (l.getbox.intersects(space)) {
+            l.storage.foreach {
+              case (e: Geom, v) =>
+                if (space.contains(e) && f(Entry[V](e, v))) {
+                  ret.append(Entry[V](e, v))
                 }
             }
           }
-        case b:Branch=>
-        {
-          b.findChildNodes(space).foreach(child=>recur(space,child,f))
+        case b: Branch => {
+          b.findChildNodes(space).foreach(child => recur(space, child, f))
         }
       }
     }
-    recur(space,this.root,f)
+
+    recur(space, this.root, f)
     ret
   }
-
-
 
 
   /**
    * Return a sequence of all entries found for an given point.
    */
-  def searchPoint(pt: Point): Entry[V] =
-  {
-        this.searchPoint(pt,this.root).get
+  def searchPoint(pt: Point): Entry[V] = {
+    this.searchPoint(pt, this.root).get
   }
 
-  private def searchPoint(pt: Point, node:Node): Option[Entry[V]] =
-  {
-       node match
-       {
-         case l:leafwithstorage[V]=>
-               l.getEntry(pt)
-         case b:Branch=>
-         {
-           val subbranch=this.findSubchildren(b,pt)
-           searchPoint(pt,subbranch)
-         }
-       }
+  private def searchPoint(pt: Point, node: Node): Option[Entry[V]] = {
+    node match {
+      case l: leafwithstorage[V] =>
+        l.getEntry(pt)
+      case b: Branch => {
+        val subbranch = this.findSubchildren(b, pt)
+        searchPoint(pt, subbranch)
+      }
+    }
   }
 
 
-  private def findPointLeaf(pt: Point, node:Node): Option[Node] =
-  {
-    node match
-    {
-      case l:leafwithstorage[V]=>
-        if(l.getbox.contains(pt))
-        {
+  private def findPointLeaf(pt: Point, node: Node): Option[Node] = {
+    node match {
+      case l: leafwithstorage[V] =>
+        if (l.getbox.contains(pt)) {
           Some(l)
-        }else{
+        } else {
           None
         }
-      case b:Branch=>
-      {
-        val subbranch=this.findSubchildren(b,pt)
-        findPointLeaf(pt,subbranch)
+      case b: Branch => {
+        val subbranch = this.findSubchildren(b, pt)
+        findPointLeaf(pt, subbranch)
       }
     }
   }
@@ -341,42 +301,39 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * Return the nearest point for an given point.
    */
-  def nearest(pt: Point): Option[Entry[V]] =
-  {
-    findPointLeaf(pt,this.root).getOrElse(None)
-      match
-    {
-      case l:leafwithstorage[V]=>{
-        var dist=Double.PositiveInfinity
+  def nearest(pt: Point): Option[Entry[V]] = {
+    findPointLeaf(pt, this.root).getOrElse(None)
+    match {
+      case l: leafwithstorage[V] => {
+        var dist = Double.PositiveInfinity
 
-        var ret=Point(0,0)
+        var ret = Point(0, 0)
         l.storage.foreach { e =>
           val d = e._1.distance(pt)
           if (d < dist) {
-            dist=d
-            ret=e._1.asInstanceOf[Point]
+            dist = d
+            ret = e._1.asInstanceOf[Point]
           }
         }
 
-      l.getEntry(ret)
+        l.getEntry(ret)
 
       }
-      case _=>None
+      case _ => None
     }
   }
 
   /**
    * Return a sequence of all entries found in the given search space.
    */
-  def nearestK(pt: Point, k: Int): Iterator[Entry[V]] =
-  {
-    nearestK(pt,k,(id)=>true)
+  def nearestK(pt: Point, k: Int): Iterator[Entry[V]] = {
+    nearestK(pt, k, (id) => true)
   }
 
   /**
    * Return a sequence of all entries found in the given search space.
    */
-  def nearestK(pt: Point,k: Int, z:Entry[V]=>Boolean): Iterator[Entry[V]] = {
+  def nearestK(pt: Point, k: Int, z: Entry[V] => Boolean): Iterator[Entry[V]] = {
 
     if (k < 1) {
       Vector.empty.toIterator
@@ -384,7 +341,7 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
 
       implicit val ord = Ordering.by[(Double, Entry[V]), Double](_._1)
       val pq = PriorityQueue.empty[(Double, Entry[V])]
-      nearestK(this.root,pt, k, Double.PositiveInfinity, pq)
+      nearestK(this.root, pt, k, Double.PositiveInfinity, pq)
       val arr = new Array[Entry[V]](pq.size)
       var i = arr.length - 1
       while (i >= 0) {
@@ -399,63 +356,61 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * Return a sequence of all entries found in the given search space.
    */
-  def nearestKwithDistance(pt: Point,k: Int,z:Entry[V]=>Boolean): IndexedSeq[(Double,Entry[V])] = {
+  def nearestKwithDistance(pt: Point, k: Int, z: Entry[V] => Boolean): IndexedSeq[(Double, Entry[V])] = {
     if (k < 1) {
       Vector.empty
     } else {
       implicit val ord = Ordering.by[(Double, Entry[V]), Double](_._1)
       val pq = PriorityQueue.empty[(Double, Entry[V])]
-      nearestK(this.root,pt, k, Double.PositiveInfinity, pq)
+      nearestK(this.root, pt, k, Double.PositiveInfinity, pq)
 
       val arr = new Array[(Double, Entry[V])](pq.size)
       var i = arr.length - 1
       while (i >= 0) {
         val (d, e) = pq.dequeue
-        arr(i) =(d,e)
+        arr(i) = (d, e)
         i -= 1
       }
       arr
     }
   }
 
-  private def nearestK(node:Node, pt: Point, k: Int, d0: Double, pq: PriorityQueue[(Double, Entry[V])]):
+  private def nearestK(node: Node, pt: Point, k: Int, d0: Double, pq: PriorityQueue[(Double, Entry[V])]):
   Double = {
     var dist: Double = d0
 
     node match {
-      case l:leafwithstorage[V] =>
+      case l: leafwithstorage[V] =>
         l.storage.foreach { e =>
           val d = e._1.distance(pt)
           if (d < dist) {
-            pq += ((d, Entry(e._1,e._2)))
-            if (pq.size > k)
-            {
+            pq += ((d, Entry(e._1, e._2)))
+            if (pq.size > k) {
               pq.dequeue
               dist = pq.head._1
             }
           }
         }
-      case b:Branch =>
+      case b: Branch =>
         val cs = b.children.map(node => (node.getbox.distance(pt), node)).toList.sortBy(_._1)
         cs.foreach {
           case (d, node) =>
-          if (d >= dist) return dist //scalastyle:ignore
-          dist = nearestK(node, pt, k, dist, pq)
+            if (d >= dist) return dist //scalastyle:ignore
+            dist = nearestK(node, pt, k, dist, pq)
         }
     }
     dist
   }
 
-  def contains(pt:Geom):Boolean={
+  def contains(pt: Geom): Boolean = {
 
-    contains(pt,(id)=>true)
+    contains(pt, (id) => true)
 
   }
 
-  def contains(pt:Geom, f:Entry[V]=>Boolean):Boolean={
+  def contains(pt: Geom, f: Entry[V] => Boolean): Boolean = {
 
-     def recur(node:Node, pt:Geom, f:Entry[V]=>Boolean): Boolean =
-    {
+    def recur(node: Node, pt: Geom, f: Entry[V] => Boolean): Boolean = {
       node match {
         case l: leafwithstorage[V] =>
           l.storage.contains(pt) && f(l.getEntry(pt).get)
@@ -463,56 +418,48 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
           recur(this.findSubchildren(b, pt), pt, f)
       }
     }
-    recur(this.root,pt,f)
+
+    recur(this.root, pt, f)
   }
 
   /**
    * Return whether or not the value exists in the tree at (x, y).
    */
-  def containEntry(x: Float, y: Float, value: V): Boolean =
-  {
-    containEntry(this.root,Entry(Point(x,y),value),(id)=>true)
+  def containEntry(x: Float, y: Float, value: V): Boolean = {
+    containEntry(this.root, Entry(Point(x, y), value), (id) => true)
   }
 
   /**
    * Return whether or not the given entry exists in the tree.
    */
-  def containEntry(entry: Entry[V]): Boolean =
-  {
-    containEntry(this.root,entry,(id)=>true)
+  def containEntry(entry: Entry[V]): Boolean = {
+    containEntry(this.root, entry, (id) => true)
   }
 
   /**
    * Return whether or not the given entry exists in the tree.
    */
-  def containEntry[K](k:K, value:V): Boolean =
-  {
-    containEntry(this.root,Entry(k.asInstanceOf[Geom],value),(id)=>true)
+  def containEntry[K](k: K, value: V): Boolean = {
+    containEntry(this.root, Entry(k.asInstanceOf[Geom], value), (id) => true)
   }
 
-  def containEntry(entry: Entry[V], f:Entry[V]=>Boolean): Boolean =
-  {
-      containEntry(this.root,entry,f)
+  def containEntry(entry: Entry[V], f: Entry[V] => Boolean): Boolean = {
+    containEntry(this.root, entry, f)
   }
 
-  private def containEntry(node:Node, entry: Entry[V], f:Entry[V]=>Boolean): Boolean =
-  {
-    node match
-    {
-      case l:leafwithstorage[V]=>
+  private def containEntry(node: Node, entry: Entry[V], f: Entry[V] => Boolean): Boolean = {
+    node match {
+      case l: leafwithstorage[V] =>
 
-         if(l.storage.contains(entry.geom))
-         {
-           val e=l.getEntry(entry.geom).get
-           f(e)
-         }else
-         {
-           false
-         }
-      case b:Branch=>
-      {
-        val subbranch=this.findSubchildren(b,entry.geom)
-        containEntry(subbranch,entry,f)
+        if (l.storage.contains(entry.geom)) {
+          val e = l.getEntry(entry.geom).get
+          f(e)
+        } else {
+          false
+        }
+      case b: Branch => {
+        val subbranch = this.findSubchildren(b, entry.geom)
+        containEntry(subbranch, entry, f)
       }
     }
 
@@ -522,21 +469,20 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
   /**
    * Return an iterator over all entries in the tree.
    */
-  def entries: Iterator[Entry[V]] =
-  {
+  def entries: Iterator[Entry[V]] = {
 
-    val itr=ArrayBuffer.empty[Entry[V]]
+    val itr = ArrayBuffer.empty[Entry[V]]
 
-    def iterator(node:Node): Unit =
+    def iterator(node: Node): Unit =
       node match {
-        case l:leafwithstorage[V] =>
-          itr.appendAll(l.storage.map{
-            case(e:Geom,v)=>Entry[V](e,v)
+        case l: leafwithstorage[V] =>
+          itr.appendAll(l.storage.map {
+            case (e: Geom, v) => Entry[V](e, v)
           })
 
-        case b:Branch =>
-          b.children.foreach{
-            n=>iterator(n)
+        case b: Branch =>
+          b.children.foreach {
+            n => iterator(n)
           }
       }
 
@@ -551,9 +497,7 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
    */
 
 
-
-  def printStructure(): Unit =
-  {
+  def printStructure(): Unit = {
     val queue = new scala.collection.mutable.Queue[Node]
 
     queue += this.root
@@ -603,25 +547,23 @@ case class QTree[V] (LEAF_MAX_CAPACITY: Int,space:Box){
     s"RTree(<$size entries>)"
 }
 
-object QTree
-{
+object QTree {
   /**
    * Construct an empty RTree.
    */
   def empty[V]: QTree[V] = QTree(qtreeUtil.MaxLeafBound, qtreeUtil.wholespace)
+
   /**
    * Construct an RTree from a sequence of entries.
    */
-  def apply[V](entries: Entry[V]*): QTree[V] =
-  {
-    val qtree=QTree.empty[V]
+  def apply[V](entries: Entry[V]*): QTree[V] = {
+    val qtree = QTree.empty[V]
     qtree.insertAll(entries)
     qtree
   }
 
-  def apply[V](entries: Iterator[Entry[V]]): QTree[V] =
-  {
-    val qtree=QTree.empty[V]
+  def apply[V](entries: Iterator[Entry[V]]): QTree[V] = {
+    val qtree = QTree.empty[V]
     qtree.insertAll(entries.toIterable)
     qtree
   }
